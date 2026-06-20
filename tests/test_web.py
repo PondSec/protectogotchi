@@ -14,12 +14,14 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "data-mode=\"guard\"" in html
     assert "data-mode=\"god\"" in html
     assert "ACTIVATE GOD MODE" in html
-    assert "does not enable covert ARP/MitM" in html
+    assert "kein heimliches ARP/MitM" in html
     assert "/api/simulate" in html
-    assert "firewall/controller automation" in html
+    assert "Automatisierung" in html
     assert "tools" in html
     assert "Protectogotchi" in html
-    assert "border-radius" not in html
+    assert "border-radius" in html
+    assert "Gedanken" not in html
+    assert "thought" in html
 
 
 def test_live_payload_contains_scan_state_and_topology(tmp_path):
@@ -62,6 +64,10 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
     assert "simulations" in payload
     assert "arp-spoof" in payload["simulations"]
     assert len(payload["devices"]) == 1
+    assert payload["pet_headline"]
+    assert payload["thought"]
+    assert payload["activity_summary"]
+    assert "Ruhige Blicke" in "\n".join(payload["calm_status"])
 
 
 def test_live_web_state_mode_switch_without_thread(tmp_path):
