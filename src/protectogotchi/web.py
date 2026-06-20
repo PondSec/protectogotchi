@@ -57,8 +57,8 @@ def dashboard_html() -> str:
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       --bg: #fff8f1;
-      --card: rgba(255, 255, 255, .82);
-      --card-strong: #ffffff;
+      --surface: rgba(255, 255, 255, .72);
+      --surface-strong: #ffffff;
       --ink: #352a33;
       --muted: #806f7a;
       --line: #f0d8df;
@@ -68,7 +68,7 @@ def dashboard_html() -> str:
       --strong: #17856f;
       --warn: #b7791f;
       --danger: #c2415d;
-      --shadow: 0 20px 60px rgba(122, 80, 102, .14);
+      --shadow: 0 18px 50px rgba(122, 80, 102, .10);
     }
     * { box-sizing: border-box; }
     body {
@@ -82,10 +82,10 @@ def dashboard_html() -> str:
     }
     header { padding: 22px clamp(18px, 4vw, 42px); display: flex; align-items: center; justify-content: space-between; gap: 18px; }
     h1 { font-size: clamp(24px, 4vw, 38px); margin: 0; letter-spacing: -.04em; }
-    h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); letter-spacing: .01em; }
+    h2 { font-size: 13px; margin: 0 0 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
     h3 { margin: 0 0 8px; font-size: 16px; }
     main { display: grid; grid-template-columns: minmax(300px, 390px) 1fr; gap: 22px; padding: 0 clamp(18px, 4vw, 42px) 34px; }
-    .side, .card, .tabs { background: var(--card); border: 1px solid rgba(240, 216, 223, .85); border-radius: 28px; box-shadow: var(--shadow); backdrop-filter: blur(12px); }
+    .side, .sheet, .tabs { background: var(--surface); border: 1px solid rgba(240, 216, 223, .75); border-radius: 30px; box-shadow: var(--shadow); backdrop-filter: blur(16px); }
     .side { padding: 24px; align-self: start; position: sticky; top: 18px; }
     .work { min-width: 0; }
     .hero { display: flex; gap: 16px; align-items: center; }
@@ -93,8 +93,8 @@ def dashboard_html() -> str:
     .face { font: 800 35px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .state { font-size: 25px; font-weight: 800; margin-bottom: 5px; letter-spacing: -.03em; }
     .muted { color: var(--muted); }
-    .bubble { position: relative; margin: 20px 0; padding: 16px 17px; border-radius: 24px 24px 24px 8px; background: var(--card-strong); border: 1px solid var(--line); line-height: 1.45; }
-    .bubble::before { content: ""; position: absolute; left: 22px; bottom: -9px; width: 18px; height: 18px; background: var(--card-strong); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
+    .bubble { position: relative; margin: 20px 0; padding: 16px 17px; border-radius: 24px 24px 24px 8px; background: var(--surface-strong); border: 1px solid var(--line); line-height: 1.45; }
+    .bubble::before { content: ""; position: absolute; left: 22px; bottom: -9px; width: 18px; height: 18px; background: var(--surface-strong); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
     .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
     .headerActions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
     .modeSwitch, .tabs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -108,10 +108,14 @@ def dashboard_html() -> str:
     .risk-low { color: var(--strong); } .risk-mid { color: var(--warn); } .risk-high { color: var(--danger); }
     .tabs { position: sticky; top: 0; padding: 12px; z-index: 2; margin-bottom: 18px; }
     .panel { display: none; } .panel.active { display: grid; gap: 18px; }
-    .card { padding: 22px; overflow: hidden; }
+    .sheet { padding: 24px; overflow: hidden; }
     .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .storyList { display: grid; gap: 10px; }
-    .story { padding: 14px; border-radius: 20px; background: rgba(255,255,255,.68); border: 1px solid var(--line); }
+    .story { padding: 13px 0; border-bottom: 1px solid var(--line); }
+    .story:last-child { border-bottom: 0; }
+    .pill { display:inline-flex; gap:7px; align-items:center; border-radius:999px; padding:7px 11px; background:rgba(255,255,255,.7); border:1px solid var(--line); color:var(--muted); font-size:13px; }
+    .quietbar { height:10px; border-radius:999px; background:#f7dbe5; overflow:hidden; margin-top:10px; }
+    .quietbar > span { display:block; height:100%; background:linear-gradient(90deg,#8ee6c6,#ffd6e5); }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
     th { color: var(--muted); font-size: 12px; }
@@ -134,14 +138,14 @@ def dashboard_html() -> str:
     <div class="headerActions"><div class="modeSwitch" aria-label="Modus"><button data-mode="learn" class="active" onclick="setMode('learn')">Lernen</button><button data-mode="watch" onclick="setMode('watch')">Nur schauen</button><button data-mode="guard" onclick="setMode('guard')">Aufpassen</button><button data-mode="god" onclick="setMode('god')">Autopilot</button><button data-mode="pause" onclick="setMode('pause')">Pause</button></div><div class="live"><span class="dot"></span><span id="liveText">startet</span></div></div>
   </header>
   <main>
-    <aside class="side"><div class="hero"><div class="pet"><div class="face" id="face">( o_o)</div></div><div><div class="state" id="state">Ich wache auf</div><div class="muted" id="mood">warte auf den ersten Blick ins Netzwerk</div></div></div><div class="bubble" id="thought">Ich schaue gleich nach, ob zuhause alles ruhig ist.</div><div class="metrics"><div class="metric"><span>Bauchgefühl</span><strong id="risk">-</strong></div><div class="metric"><span>Erfahrung</span><strong id="level">-</strong></div><div class="metric"><span>Gelernt</span><strong id="baseline">-</strong></div><div class="metric"><span>Geräte</span><strong id="devicesCount">-</strong></div></div></aside>
+    <aside class="side"><div class="hero"><div class="pet"><div class="face" id="face">( o_o)</div></div><div><div class="state" id="state">Ich wache auf</div><div class="muted" id="mood">warte auf den ersten Blick ins Netzwerk</div></div></div><div class="bubble" aria-label="Gedankenblase"><strong>Gedankenblase</strong><br><span id="thought">Ich schaue gleich nach, ob zuhause alles ruhig ist.</span></div><div class="metrics"><div class="metric"><span>Bauchgefühl</span><strong id="risk">-</strong></div><div class="metric"><span>Erfahrung</span><strong id="level">-</strong></div><div class="metric"><span>Gelernt</span><strong id="baseline">-</strong></div><div class="metric"><span>Geräte</span><strong id="devicesCount">-</strong></div></div></aside>
     <div class="work"><nav class="tabs" aria-label="Ansichten"><button data-tab="overview" class="active" onclick="switchTab('overview')">Zuhause</button><button data-tab="activity" onclick="switchTab('activity')">Was passiert?</button><button data-tab="findings" onclick="switchTab('findings')">Sorgen</button><button data-tab="devices" onclick="switchTab('devices')">Mitbewohner</button><button data-tab="lab" onclick="switchTab('lab')">Spielwiese</button><button data-tab="arsenal" onclick="switchTab('arsenal')">Hilfe</button></nav>
-      <section class="panel active" data-panel="overview"><div class="card"><h2>Die Wohnungskarte</h2><svg id="networkGraph" role="img" aria-label="Einfache Netzwerkkarte"></svg></div><div class="grid2"><div class="card"><h2>Kurz gesagt</h2><div id="plainSummary" class="storyList">lädt...</div></div><div class="card"><h2>Wie wachsam bin ich?</h2><pre id="topology">lädt...</pre></div></div></section>
-      <section class="panel" data-panel="activity"><div class="card"><h2>Gerade im Netzwerk los</h2><div id="activity">lädt...</div></div><div class="grid2"><div class="card"><h2>Details für Neugierige</h2><pre id="networkDetail">lädt...</pre></div><div class="card"><h2>Abdeckung</h2><pre id="coverage">lädt...</pre></div></div></section>
-      <section class="panel" data-panel="findings"><div class="card"><h2>Sorgen & Empfehlungen</h2><div id="findings">lädt...</div></div><div class="card"><h2>Letzte Erinnerungen</h2><div id="history">lädt...</div></div></section>
-      <section class="panel" data-panel="devices"><div class="card"><h2>Bekannte Mitbewohner</h2><table><thead><tr><th>Name</th><th>Adresse</th><th>Wie oft gesehen</th><th>Zuletzt</th></tr></thead><tbody id="devices"></tbody></table></div></section>
-      <section class="panel" data-panel="lab"><div class="card"><h2>Passt mein Platz?</h2><pre id="placement">lädt...</pre></div><div class="card"><h2>Gefahr gefahrlos ausprobieren</h2><div class="modeSwitch" id="simulationButtons"></div><pre id="simulation">Such dir ein kleines Szenario aus.</pre></div></section>
-      <section class="panel" data-panel="arsenal"><div class="grid2"><div class="card"><h2>Was ich benutzen kann</h2><pre id="tools">lädt...</pre></div><div class="card"><h2>Was ich weiß</h2><pre id="knowledge">lädt...</pre></div></div></section>
+      <section class="panel active" data-panel="overview"><div class="sheet"><h2>Die Wohnungskarte</h2><svg id="networkGraph" role="img" aria-label="Einfache Netzwerkkarte"></svg></div><div class="grid2"><div class="sheet"><h2>Kurz gesagt</h2><div id="plainSummary" class="storyList">lädt...</div></div><div class="sheet"><h2>Meine Wachsamkeit</h2><div id="watchfulness">lädt...</div><pre id="topology">lädt...</pre></div></div></section>
+      <section class="panel" data-panel="activity"><div class="sheet"><h2>Gerade im Netzwerk los</h2><div id="activity">lädt...</div></div><div class="grid2"><div class="sheet"><h2>Details für Neugierige</h2><pre id="networkDetail">lädt...</pre></div><div class="sheet"><h2>Abdeckung</h2><pre id="coverage">lädt...</pre></div></div></section>
+      <section class="panel" data-panel="findings"><div class="sheet"><h2>Sorgen & Empfehlungen</h2><div id="findings">lädt...</div></div><div class="sheet"><h2>Letzte Erinnerungen</h2><div id="history">lädt...</div></div></section>
+      <section class="panel" data-panel="devices"><div class="sheet"><h2>Bekannte Mitbewohner</h2><table><thead><tr><th>Name</th><th>Adresse</th><th>Wie oft gesehen</th><th>Zuletzt</th></tr></thead><tbody id="devices"></tbody></table></div></section>
+      <section class="panel" data-panel="lab"><div class="sheet"><h2>Passt mein Platz?</h2><pre id="placement">lädt...</pre></div><div class="sheet"><h2>Gefahr gefahrlos ausprobieren</h2><div class="modeSwitch" id="simulationButtons"></div><pre id="simulation">Such dir ein kleines Szenario aus.</pre></div></section>
+      <section class="panel" data-panel="arsenal"><div class="grid2"><div class="sheet"><h2>Was ich benutzen kann</h2><pre id="tools">lädt...</pre></div><div class="sheet"><h2>Was ich weiß</h2><pre id="knowledge">lädt...</pre></div></div></section>
     </div>
   </main>
   <script>
@@ -156,8 +160,9 @@ def dashboard_html() -> str:
       document.getElementById('thought').textContent=live.thought || 'Ich schaue mich um und sage Bescheid, wenn mir etwas komisch vorkommt.'; renderMode(live.mode||'learn');
       document.getElementById('risk').textContent=riskWord(scan.risk_score||0); document.getElementById('risk').className=(scan.risk_score||0)>=70?'risk-high':((scan.risk_score||0)>=35?'risk-mid':'risk-low'); document.getElementById('level').textContent=state.level??'-'; document.getElementById('baseline').textContent=state.baseline_ready?'ja':((state.learning_remaining||0)+' Blicke'); document.getElementById('devicesCount').textContent=state.known_devices??'-'; document.getElementById('liveText').textContent='zuletzt geschaut: '+(live.updated_at||'gerade');
       renderPlainSummary(live, snapshot); renderActivity(live, snapshot); renderGraph((live.network_map||{}).graph||{nodes:[],edges:[]}); renderFindings(scan.findings||[]); renderHistory(live.finding_history||[]); renderDevices(live.devices||[]); renderPlacement(live.placement_report||{}); renderSimulationButtons(live.simulations||[]);
-      document.getElementById('topology').textContent=(live.calm_status||[]).join('\n'); document.getElementById('networkDetail').textContent=JSON.stringify((live.network_map||{}).summary||{},null,2); document.getElementById('coverage').textContent=((live.network_map||{}).coverage||[]).join('\n') || 'Noch keine Abdeckung bekannt.'; document.getElementById('tools').textContent=(live.tools||[]).map(t=>'• '+t.name+' — '+t.status).join('\n'); document.getElementById('knowledge').textContent=(live.knowledge||[]).map(t=>'• '+t.name+' ('+t.domain+')').join('\n');
+      document.getElementById('topology').textContent=(live.calm_status||[]).join('\n'); renderWatchfulness(live); document.getElementById('networkDetail').textContent=JSON.stringify((live.network_map||{}).summary||{},null,2); document.getElementById('coverage').textContent=((live.network_map||{}).coverage||[]).join('\n') || 'Noch keine Abdeckung bekannt.'; document.getElementById('tools').textContent=(live.tools||[]).map(t=>'• '+t.name+' — '+t.status).join('\n'); document.getElementById('knowledge').textContent=(live.knowledge||[]).map(t=>'• '+t.name+' ('+t.domain+')').join('\n');
     }
+    function renderWatchfulness(live){ const quiet=live.quiet_scans||0; const pct=Math.min(100, quiet*25); document.getElementById('watchfulness').innerHTML=`<span class="pill">öftere Kontrollblicke · ${quiet} ruhige Runden</span><div class="quietbar"><span style="width:${pct}%"></span></div>`; }
     function renderPlainSummary(live,s){ const items=[['WLAN', (s.wifi||{}).ssid || 'nicht erkannt'], ['Internet-Tür', s.default_gateway || 'noch unbekannt'], ['Modus', modeNames[live.mode] || live.mode], ['Aktive Verbindungen', (s.connections||[]).length], ['Gefundene Geräte', (s.devices||[]).length]]; document.getElementById('plainSummary').innerHTML=items.map(i=>`<div class="story"><strong>${i[0]}</strong><br><span class="muted">${escapeHtml(i[1])}</span></div>`).join(''); }
     function renderActivity(live,s){ const findings=(live.scan||{}).findings||[]; const lines=[]; lines.push(`<div class="story"><strong>${findings.length?'Ich habe etwas bemerkt':'Alles wirkt gerade ruhig'}</strong><br><span class="muted">${escapeHtml(live.activity_summary||'Keine ungewöhnlichen Geräusche im Netzwerk.')}</span></div>`); (s.connections||[]).slice(0,8).forEach(c=>lines.push(`<div class="story">${escapeHtml(c.protocol||'Verbindung')} von ${escapeHtml(c.local_address||'?')}:${c.local_port||''} zu ${escapeHtml(c.remote_address||'zuhause')}:${c.remote_port||''}<br><span class="muted">Status: ${escapeHtml(c.state||'unbekannt')}</span></div>`)); document.getElementById('activity').innerHTML=lines.join(''); }
     function renderFindings(findings){ const t=document.getElementById('findings'); if(!findings.length){t.innerHTML="<div class='story'><strong>Keine Sorgen.</strong><br><span class='muted'>Ich sehe gerade nichts, das dich stressen sollte.</span></div>"; return;} t.innerHTML=findings.map(f=>`<div class="story"><strong class="severity-${f.severity}">${severityWord(f.severity)}: ${escapeHtml(f.title)}</strong><br><span>${escapeHtml(f.description)}</span><br><span class="muted">Mein Vorschlag: ${escapeHtml(f.recommended_action||'beobachten')}</span></div>`).join(''); }
@@ -291,9 +296,9 @@ class LiveWebState:
             quiet_scans = self.quiet_scans
         if mode == "pause":
             return self.scan_interval
-        if quiet_scans >= 3:
-            return max(1.0, min(self.scan_interval, 2.0))
-        return max(1.0, min(self.scan_interval, 3.0))
+        if quiet_scans >= 2:
+            return 1.0
+        return max(1.0, min(self.scan_interval, 2.0))
 
 
 def _live_payload(
@@ -314,6 +319,7 @@ def _live_payload(
         "thought": thought,
         "activity_summary": activity,
         "calm_status": calm_status,
+        "quiet_scans": quiet_scans,
         "mode": mode,
         "mode_description": WEB_MODES[mode]["description"],
         "state": _state_summary(config),
@@ -358,11 +364,11 @@ def _pet_narration(
         headline = "Ich bin neugierig"
         subtitle = "Ein paar Dinge verdienen einen zweiten Blick."
         thought = "Nichts zum Panischwerden, aber ich möchte diese Veränderung lieber beobachten."
-    elif quiet_scans >= 3:
+    elif quiet_scans >= 2:
         pet_state = "bored"
         headline = "Mir ist fast langweilig"
-        subtitle = "Alles ist ruhig, deshalb schaue ich öfter kurz nach."
-        thought = "Keine neuen Geräusche im Netzwerk. Ich mache trotzdem kleine Kontrollblicke, damit mir nichts entwischt."
+        subtitle = "Alles ist ruhig. Damit mir nicht langweilig wird, schaue ich selbstständig öfter kurz nach."
+        thought = "Keine neuen Geräusche im Netzwerk. Mir wird ein bisschen langweilig, also mache ich extra Kontrollblicke und halte die Ohren flauschig offen."
     elif result.learned:
         pet_state = "learning"
         headline = "Ich lerne dein Zuhause"
