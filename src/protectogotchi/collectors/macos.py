@@ -8,6 +8,7 @@ from pathlib import Path
 
 from protectogotchi.collectors.base import Collector
 from protectogotchi.models import Connection, Device, NetworkSnapshot, WifiInfo, utc_now
+from protectogotchi.netutil import is_relevant_neighbor
 
 
 ARP_RE = re.compile(
@@ -91,6 +92,8 @@ class MacOSCollector(Collector):
                 continue
             mac = match.group("mac").lower()
             if mac == "(incomplete)":
+                continue
+            if not is_relevant_neighbor(match.group("ip"), mac):
                 continue
             devices.append(
                 Device(

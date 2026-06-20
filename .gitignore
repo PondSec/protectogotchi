@@ -12,4 +12,5 @@ build/
 
 # Local Protectogotchi runtime state
 .protectogotchi/
+.protectogotchi-test/
 protectogotchi-state/

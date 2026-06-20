@@ -261,8 +261,8 @@ class AnomalyDetector:
             return "fighting"
         if risk_score >= 35:
             return "alert"
+        if learning and risk_score == 0:
+            return "learning"
         if findings:
             return "analyzing"
-        if learning:
-            return "learning"
         return "happy"

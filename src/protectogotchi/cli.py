@@ -8,9 +8,11 @@ from pathlib import Path
 from protectogotchi import __version__
 from protectogotchi.agent import ProtectogotchiAgent
 from protectogotchi.config import ProtectogotchiConfig
+from protectogotchi.doctor import run_doctor
 from protectogotchi.face import FACES, render_face
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
 from protectogotchi.state import StateStore
+from protectogotchi.tools import list_tools
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -78,6 +80,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Execute when active response is enabled. Otherwise print dry-run.",
     )
 
+    tools_parser = subparsers.add_parser("tools", help="List defensive tools.")
+    tools_parser.add_argument(
+        "--available-only",
+        action="store_true",
+        help="Hide planned tools and show only commands available in this MVP.",
+    )
+
+    subparsers.add_parser("doctor", help="Check local platform tool availability.")
+
+    baseline_parser = subparsers.add_parser("baseline", help="Inspect or reset baseline.")
+    baseline_subparsers = baseline_parser.add_subparsers(dest="baseline_command")
+    baseline_subparsers.add_parser("show", help="Show learned baseline details.")
+    reset_parser = baseline_subparsers.add_parser("reset", help="Reset local state.")
+    reset_parser.add_argument("--yes", action="store_true", help="Confirm state deletion.")
+
+    devices_parser = subparsers.add_parser("devices", help="List known baseline devices.")
+    devices_parser.add_argument("--json", action="store_true", help="Print JSON.")
+
     return parser
 
 
@@ -120,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"state_file={StateStore(config.state_dir).path}")
         return 0
     if args.command == "respond":
-        action = ResponsePlanner(config)._block_command_preview(args.ip)
+        action = ResponsePlanner(config).block_command_preview(args.ip)
         from protectogotchi.models import ResponseAction
 
         response = ResponseAction(
@@ -134,6 +154,25 @@ def main(argv: list[str] | None = None) -> int:
         if args.execute:
             response = ResponseExecutor(config).execute(response)
         print(json.dumps(response.__dict__, indent=2, sort_keys=True))
+        return 0
+    if args.command == "tools":
+        _print_tools(include_planned=not args.available_only)
+        return 0
+    if args.command == "doctor":
+        checks = run_doctor()
+        for check in checks:
+            status = "ok" if check.ok else "missing"
+            print(f"{status:7} {check.name} {check.detail}")
+        return 0 if all(check.ok for check in checks if not check.name.startswith("response:")) else 1
+    if args.command == "baseline":
+        return _handle_baseline(args, config)
+    if args.command == "devices":
+        state = StateStore(config.state_dir).load()
+        devices = list(state.devices.values())
+        if args.json:
+            print(json.dumps(devices, indent=2, sort_keys=True))
+        else:
+            _print_devices(devices)
         return 0
 
     parser.print_help()
@@ -182,3 +221,62 @@ def _print_scan(result) -> None:
             )
             for command in action.command_preview:
                 print(f"  $ {command}")
+
+
+def _print_tools(include_planned: bool) -> None:
+    current_category = None
+    for tool in sorted(list_tools(include_planned), key=lambda item: (item.category, item.name)):
+        if tool.category != current_category:
+            current_category = tool.category
+            print(f"\n[{current_category}]")
+        platforms = ",".join(tool.platforms)
+        print(
+            f"- {tool.name} ({tool.status}, {tool.risk}, {platforms})\n"
+            f"  {tool.summary}\n"
+            f"  $ {tool.command}"
+        )
+
+
+def _handle_baseline(args: argparse.Namespace, config: ProtectogotchiConfig) -> int:
+    store = StateStore(config.state_dir)
+    if args.baseline_command == "show":
+        state = store.load()
+        print(f"state_file={store.path}")
+        print(f"observations={state.observations} scans={state.scans}")
+        print(f"level={state.level} xp={state.xp}")
+        print(f"known_devices={len(state.devices)}")
+        print(f"gateway_macs={json.dumps(state.gateway_macs, sort_keys=True)}")
+        print("feature_stats:")
+        for name, stats in sorted(state.feature_stats.items()):
+            print(
+                f"- {name}: count={stats.count} "
+                f"mean={stats.mean:.2f} stddev={stats.stddev:.2f}"
+            )
+        return 0
+
+    if args.baseline_command == "reset":
+        if not args.yes:
+            print("Refusing to reset baseline without --yes.")
+            return 2
+        if store.path.exists():
+            store.path.unlink()
+            print(f"removed {store.path}")
+        else:
+            print(f"no state file at {store.path}")
+        return 0
+
+    print("Choose a baseline subcommand: show or reset.")
+    return 2
+
+
+def _print_devices(devices: list[dict]) -> None:
+    if not devices:
+        print("No devices learned yet.")
+        return
+    for device in sorted(devices, key=lambda item: item.get("mac", "")):
+        ips = ",".join(device.get("ips", []))
+        print(
+            f"{device.get('mac')} ips={ips or '-'} "
+            f"seen={device.get('seen_count', 0)} "
+            f"last={device.get('last_seen', '-')}"
+        )

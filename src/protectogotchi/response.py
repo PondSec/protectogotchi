@@ -29,7 +29,7 @@ class ResponsePlanner:
                             reason=finding.title,
                             severity=finding.severity,
                             dry_run=not self.config.active_response_enabled,
-                            command_preview=self._block_command_preview(target),
+                            command_preview=self.block_command_preview(target),
                         )
                     )
                 else:
@@ -65,7 +65,7 @@ class ResponsePlanner:
             return None
         return str(value)
 
-    def _block_command_preview(self, ip: str) -> list[str]:
+    def block_command_preview(self, ip: str) -> list[str]:
         system = platform.system()
         if system == "Darwin":
             return [

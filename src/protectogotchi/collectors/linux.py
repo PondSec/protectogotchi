@@ -6,6 +6,7 @@ import subprocess
 
 from protectogotchi.collectors.base import Collector
 from protectogotchi.models import Connection, Device, NetworkSnapshot, WifiInfo, utc_now
+from protectogotchi.netutil import is_relevant_neighbor
 
 
 class LinuxCollector(Collector):
@@ -60,6 +61,8 @@ class LinuxCollector(Collector):
                 continue
             ip = parts[0]
             mac = parts[parts.index("lladdr") + 1].lower()
+            if not is_relevant_neighbor(ip, mac):
+                continue
             iface = parts[parts.index("dev") + 1]
             devices.append(Device(ip=ip, mac=mac, interface=iface, source="ip-neigh"))
         return devices
