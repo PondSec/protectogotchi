@@ -32,3 +32,14 @@ def test_state_persists_baseline_and_progress(tmp_path):
     assert loaded.xp > 1
     assert "00:11:22:33:44:55" in loaded.devices
     assert loaded.gateway_macs["192.168.1.1"] == "aa:aa:aa:aa:aa:aa"
+
+
+def test_state_persists_trusted_devices(tmp_path):
+    store = StateStore(tmp_path)
+    state = store.load()
+    state.trust_device("00-11-22-33-44-55", "laptop")
+    store.save(state)
+
+    loaded = store.load()
+    assert loaded.trusted_devices["00:11:22:33:44:55"]["label"] == "laptop"
+    assert loaded.untrust_device("00-11-22-33-44-55")

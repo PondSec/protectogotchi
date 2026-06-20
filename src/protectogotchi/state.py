@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from protectogotchi.models import Finding, NetworkSnapshot, utc_now
+from protectogotchi.netutil import normalize_mac
 
 
 @dataclass
@@ -52,6 +53,7 @@ class ProtectogotchiState:
     gateway_macs: dict[str, str] = field(default_factory=dict)
     feature_stats: dict[str, FeatureStats] = field(default_factory=dict)
     seen_listening_ports: list[int] = field(default_factory=list)
+    trusted_devices: dict[str, dict[str, str]] = field(default_factory=dict)
 
     def known_macs(self) -> set[str]:
         return set(self.devices)
@@ -105,6 +107,23 @@ class ProtectogotchiState:
         ports = set(self.seen_listening_ports)
         ports.update(snapshot.listening_ports())
         self.seen_listening_ports = sorted(ports)
+
+    def trust_device(self, mac: str, label: str | None = None) -> str:
+        normalized = normalize_mac(mac)
+        self.trusted_devices[normalized] = {
+            "mac": normalized,
+            "label": label or normalized,
+            "trusted_at": utc_now(),
+        }
+        self.updated_at = utc_now()
+        return normalized
+
+    def untrust_device(self, mac: str) -> bool:
+        normalized = normalize_mac(mac)
+        removed = self.trusted_devices.pop(normalized, None) is not None
+        if removed:
+            self.updated_at = utc_now()
+        return removed
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)

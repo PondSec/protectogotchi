@@ -3,6 +3,10 @@ from __future__ import annotations
 from ipaddress import ip_address
 
 
+def normalize_mac(mac: str) -> str:
+    return mac.strip().lower().replace("-", ":")
+
+
 def is_relevant_neighbor(ip: str, mac: str) -> bool:
     try:
         parsed_ip = ip_address(ip)
@@ -12,7 +16,7 @@ def is_relevant_neighbor(ip: str, mac: str) -> bool:
     if parsed_ip.is_multicast or parsed_ip.is_unspecified or parsed_ip.is_link_local:
         return False
 
-    normalized = mac.lower()
+    normalized = normalize_mac(mac)
     if normalized == "ff:ff:ff:ff:ff:ff":
         return False
 

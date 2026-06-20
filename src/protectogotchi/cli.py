@@ -7,9 +7,13 @@ from pathlib import Path
 
 from protectogotchi import __version__
 from protectogotchi.agent import ProtectogotchiAgent
+from protectogotchi.collectors import get_collector
 from protectogotchi.config import ProtectogotchiConfig
+from protectogotchi.detection import list_detection_rules
 from protectogotchi.doctor import run_doctor
 from protectogotchi.face import FACES, render_face
+from protectogotchi.knowledge import get_topic, list_topics
+from protectogotchi.netutil import normalize_mac
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
 from protectogotchi.state import StateStore
 from protectogotchi.tools import list_tools
@@ -98,6 +102,30 @@ def build_parser() -> argparse.ArgumentParser:
     devices_parser = subparsers.add_parser("devices", help="List known baseline devices.")
     devices_parser.add_argument("--json", action="store_true", help="Print JSON.")
 
+    snapshot_parser = subparsers.add_parser("snapshot", help="Export raw telemetry JSON.")
+    snapshot_parser.add_argument(
+        "--collector",
+        choices=["macos", "linux"],
+        help="Force a collector instead of auto-detecting the platform.",
+    )
+
+    subparsers.add_parser("rules", help="List local detection rules.")
+
+    knowledge_parser = subparsers.add_parser("knowledge", help="Browse local network knowledge.")
+    knowledge_parser.add_argument("topic", nargs="?", help="Optional topic name.")
+    knowledge_parser.add_argument(
+        "--mvp-only",
+        action="store_true",
+        help="Hide planned knowledge modules.",
+    )
+
+    trust_parser = subparsers.add_parser("trust-device", help="Trust a device MAC.")
+    trust_parser.add_argument("--mac", required=True, help="MAC address to trust.")
+    trust_parser.add_argument("--label", help="Human label for the device.")
+
+    untrust_parser = subparsers.add_parser("untrust-device", help="Remove device trust.")
+    untrust_parser.add_argument("--mac", required=True, help="MAC address to untrust.")
+
     return parser
 
 
@@ -174,6 +202,31 @@ def main(argv: list[str] | None = None) -> int:
         else:
             _print_devices(devices)
         return 0
+    if args.command == "snapshot":
+        snapshot = get_collector(args.collector).collect()
+        print(json.dumps(snapshot.to_dict(), indent=2, sort_keys=True))
+        return 0
+    if args.command == "rules":
+        for rule in list_detection_rules():
+            print(f"- {rule.code} [{rule.severity}] {rule.summary}")
+        return 0
+    if args.command == "knowledge":
+        return _handle_knowledge(args)
+    if args.command == "trust-device":
+        store = StateStore(config.state_dir)
+        state = store.load()
+        mac = state.trust_device(args.mac, args.label)
+        store.save(state)
+        print(f"trusted {mac} label={state.trusted_devices[mac]['label']}")
+        return 0
+    if args.command == "untrust-device":
+        store = StateStore(config.state_dir)
+        state = store.load()
+        mac = normalize_mac(args.mac)
+        removed = state.untrust_device(mac)
+        store.save(state)
+        print(f"untrusted {mac}" if removed else f"{mac} was not trusted")
+        return 0
 
     parser.print_help()
     return 0
@@ -245,6 +298,7 @@ def _handle_baseline(args: argparse.Namespace, config: ProtectogotchiConfig) -> 
         print(f"observations={state.observations} scans={state.scans}")
         print(f"level={state.level} xp={state.xp}")
         print(f"known_devices={len(state.devices)}")
+        print(f"trusted_devices={len(state.trusted_devices)}")
         print(f"gateway_macs={json.dumps(state.gateway_macs, sort_keys=True)}")
         print("feature_stats:")
         for name, stats in sorted(state.feature_stats.items()):
@@ -280,3 +334,31 @@ def _print_devices(devices: list[dict]) -> None:
             f"seen={device.get('seen_count', 0)} "
             f"last={device.get('last_seen', '-')}"
         )
+
+
+def _handle_knowledge(args: argparse.Namespace) -> int:
+    if args.topic:
+        topic = get_topic(args.topic)
+        if topic is None:
+            print(f"Unknown topic: {args.topic}")
+            return 2
+        _print_topic(topic)
+        return 0
+
+    for topic in list_topics(include_planned=not args.mvp_only):
+        print(f"- {topic.name} ({topic.domain}, {topic.maturity}) {topic.summary}")
+    return 0
+
+
+def _print_topic(topic) -> None:
+    print(f"{topic.name} ({topic.domain}, {topic.maturity})")
+    print(topic.summary)
+    print("signals:")
+    for signal in topic.signals:
+        print(f"- {signal}")
+    print("defensive_tools:")
+    for tool in topic.defensive_tools:
+        print(f"- {tool}")
+    print("response_playbook:")
+    for step in topic.response_playbook:
+        print(f"- {step}")

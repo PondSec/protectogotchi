@@ -1,4 +1,8 @@
-from protectogotchi.netutil import is_relevant_neighbor
+from protectogotchi.netutil import is_relevant_neighbor, normalize_mac
+
+
+def test_normalize_mac_accepts_dash_format():
+    assert normalize_mac("00-11-22-33-44-55") == "00:11:22:33:44:55"
 
 
 def test_relevant_neighbor_filters_noise_addresses():

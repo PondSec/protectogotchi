@@ -56,6 +56,26 @@ def test_new_device_after_learning_phase_is_low_risk():
     assert analysis.face_state == "analyzing"
 
 
+def test_trusted_new_device_is_info_after_learning_phase():
+    config = ProtectogotchiConfig(min_baseline_observations=3)
+    state = ProtectogotchiState()
+    known = Device(ip="192.168.1.10", mac="00:11:22:33:44:55", interface="en0")
+    for _ in range(3):
+        state.learn(make_snapshot(devices=[known]))
+    state.trust_device("66:77:88:99:aa:bb", "phone")
+
+    trusted = Device(ip="192.168.1.99", mac="66:77:88:99:aa:bb", interface="en0")
+    analysis = AnomalyDetector(config).analyze(make_snapshot(devices=[known, trusted]), state)
+
+    trusted_findings = [
+        finding for finding in analysis.findings if finding.code == "trusted_device_seen"
+    ]
+    assert len(trusted_findings) == 1
+    assert trusted_findings[0].severity == "info"
+    assert analysis.risk_score == 0
+    assert analysis.face_state == "happy"
+
+
 def test_feature_spike_is_detected_against_local_baseline():
     config = ProtectogotchiConfig(min_baseline_observations=4)
     state = ProtectogotchiState()

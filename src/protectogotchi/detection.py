@@ -25,6 +25,56 @@ class Analysis:
     face_state: str
 
 
+@dataclass(frozen=True)
+class DetectionRule:
+    code: str
+    severity: str
+    summary: str
+
+
+DETECTION_RULES: tuple[DetectionRule, ...] = (
+    DetectionRule(
+        code="gateway_mac_changed",
+        severity="critical",
+        summary="Default gateway/router MAC differs from the learned baseline.",
+    ),
+    DetectionRule(
+        code="ip_mac_changed",
+        severity="high",
+        summary="A known IP address is now associated with another MAC address.",
+    ),
+    DetectionRule(
+        code="new_device_seen",
+        severity="low",
+        summary="A new untrusted MAC appears after the learning phase.",
+    ),
+    DetectionRule(
+        code="trusted_device_seen",
+        severity="info",
+        summary="A pre-trusted MAC appears and can be learned with low risk.",
+    ),
+    DetectionRule(
+        code="feature_spike_*",
+        severity="medium/high",
+        summary="Network feature value is far above the local baseline.",
+    ),
+    DetectionRule(
+        code="new_listening_port",
+        severity="medium",
+        summary="A local service listens on a port not seen in the baseline.",
+    ),
+    DetectionRule(
+        code="risky_remote_service",
+        severity="medium",
+        summary="A connection targets a remote admin or lateral-movement service.",
+    ),
+)
+
+
+def list_detection_rules() -> tuple[DetectionRule, ...]:
+    return DETECTION_RULES
+
+
 class AnomalyDetector:
     def __init__(self, config: ProtectogotchiConfig) -> None:
         self.config = config
@@ -126,6 +176,27 @@ class AnomalyDetector:
         for device in snapshot.devices:
             mac = device.normalized_mac()
             if mac in known_macs:
+                continue
+            trusted = state.trusted_devices.get(mac)
+            if trusted:
+                findings.append(
+                    Finding(
+                        code="trusted_device_seen",
+                        title="Trusted device observed",
+                        severity="info",
+                        description=(
+                            "A device pre-marked as trusted is visible and can be "
+                            "added to the learned baseline."
+                        ),
+                        evidence={
+                            "ip": device.ip,
+                            "mac": mac,
+                            "label": trusted.get("label"),
+                            "trusted": True,
+                        },
+                        recommended_action="learn",
+                    )
+                )
                 continue
             findings.append(
                 Finding(
@@ -261,8 +332,8 @@ class AnomalyDetector:
             return "fighting"
         if risk_score >= 35:
             return "alert"
-        if learning and risk_score == 0:
-            return "learning"
+        if risk_score == 0:
+            return "learning" if learning else "happy"
         if findings:
             return "analyzing"
         return "happy"

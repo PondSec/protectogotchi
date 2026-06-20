@@ -47,8 +47,21 @@ protectogotchi scan
 # Machine-readable output for logs or a future dashboard.
 protectogotchi scan --json
 
+# Export raw telemetry without learning.
+protectogotchi snapshot
+
 # Continuous local daemon mode.
 protectogotchi daemon --interval 10
+
+# List the defensive arsenal, rules, and local network knowledge.
+protectogotchi tools
+protectogotchi rules
+protectogotchi knowledge
+protectogotchi knowledge arp-spoofing
+
+# Trust or untrust devices explicitly.
+protectogotchi trust-device --mac 00:11:22:33:44:55 --label laptop
+protectogotchi untrust-device --mac 00:11:22:33:44:55
 
 # Plan a defensive block without changing the system firewall.
 protectogotchi respond --ip 192.168.1.50 --reason "manual test"

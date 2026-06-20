@@ -21,6 +21,24 @@ class ToolDefinition:
 
 TOOLS: tuple[ToolDefinition, ...] = (
     ToolDefinition(
+        name="snapshot",
+        category="observe",
+        summary="Export raw local telemetry without learning or scoring.",
+        command="protectogotchi snapshot",
+    ),
+    ToolDefinition(
+        name="rules",
+        category="diagnose",
+        summary="List local detection rules and their severity.",
+        command="protectogotchi rules",
+    ),
+    ToolDefinition(
+        name="knowledge",
+        category="diagnose",
+        summary="Browse local network-defense knowledge and playbooks.",
+        command="protectogotchi knowledge",
+    ),
+    ToolDefinition(
         name="scan",
         category="observe",
         summary="Collect one local telemetry snapshot, score anomalies, and learn if safe.",
@@ -125,7 +143,6 @@ TOOLS: tuple[ToolDefinition, ...] = (
         category="learn",
         summary="Mark a device as trusted with an owner-supplied label.",
         command="protectogotchi trust-device --mac 00:11:22:33:44:55 --label laptop",
-        status="planned",
         risk="review",
     ),
     ToolDefinition(
@@ -133,7 +150,6 @@ TOOLS: tuple[ToolDefinition, ...] = (
         category="learn",
         summary="Remove trust from a device and increase scrutiny.",
         command="protectogotchi untrust-device --mac 00:11:22:33:44:55",
-        status="planned",
         risk="review",
     ),
     ToolDefinition(

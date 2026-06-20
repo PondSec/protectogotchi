@@ -21,3 +21,32 @@ def test_baseline_show_uses_state_dir(tmp_path, capsys):
     output = capsys.readouterr().out
     assert "observations=0" in output
     assert "known_devices=0" in output
+
+
+def test_rules_command_lists_detection_rules(capsys):
+    assert main(["rules"]) == 0
+    output = capsys.readouterr().out
+    assert "gateway_mac_changed" in output
+    assert "new_device_seen" in output
+
+
+def test_knowledge_command_shows_playbook(capsys):
+    assert main(["knowledge", "arp-spoofing"]) == 0
+    output = capsys.readouterr().out
+    assert "gateway MAC drift" in output
+    assert "response_playbook" in output
+
+
+def test_trust_and_untrust_device_commands(tmp_path, capsys):
+    mac = "00-11-22-33-44-55"
+    assert main(["--state-dir", str(tmp_path), "trust-device", "--mac", mac, "--label", "laptop"]) == 0
+    output = capsys.readouterr().out
+    assert "trusted 00:11:22:33:44:55" in output
+
+    assert main(["--state-dir", str(tmp_path), "baseline", "show"]) == 0
+    output = capsys.readouterr().out
+    assert "trusted_devices=1" in output
+
+    assert main(["--state-dir", str(tmp_path), "untrust-device", "--mac", mac]) == 0
+    output = capsys.readouterr().out
+    assert "untrusted 00:11:22:33:44:55" in output
