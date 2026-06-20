@@ -38,6 +38,26 @@ The current MVP implements observer mode, local telemetry, anomaly scoring,
 topology mapping, dry-run response planning, and a local web UI/API. Network-wide
 prevention is planned for the Pi/router/controller phases.
 
+## Attack Simulation
+
+Attack Simulation is a local education and test mode. It uses synthetic
+snapshots for scenarios such as ARP-spoof detection, new devices, connection
+spikes, and VLAN lateral movement. It never injects packets, never redirects
+live traffic, and never touches other devices. The purpose is to prove that
+Protectogotchi can recognize the signals and explain the defensive lesson.
+
+## Setup Wizard
+
+The setup wizard is a placement reality check. It does not automate
+firewall/router control, does not enable ARP spoofing, and does not pretend that
+a client-only deployment can block traffic between other devices.
+
+For a client in VLAN10, Protectogotchi can often see routes or active
+connections toward VLAN20 and can detect risky behavior. It cannot reliably
+prevent VLAN10-to-VLAN20 traffic unless it is in the path or connected to an
+authorized enforcement point. For same-subnet peer traffic, it needs access
+layer control, endpoint agents, or inline placement.
+
 ## God Mode
 
 God Mode is an explicitly armed autonomous defensive mode. After activation,

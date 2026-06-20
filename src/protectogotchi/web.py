@@ -14,6 +14,8 @@ from protectogotchi.enforcement import easy_protect_plan, god_mode_readiness
 from protectogotchi.knowledge import list_topics
 from protectogotchi.models import ScanResult, utc_now
 from protectogotchi.network_map import NetworkMapper
+from protectogotchi.placement import build_placement_report
+from protectogotchi.simulation import SCENARIOS, run_simulation
 from protectogotchi.state import StateStore
 from protectogotchi.tools import list_tools
 from protectogotchi.topology import NetworkTopology, TopologyBuilder
@@ -119,6 +121,16 @@ def dashboard_html() -> str:
     .finding strong { display: block; }
     .severity-critical, .severity-high { color: var(--danger); }
     .severity-medium { color: var(--warn); }
+    .quietActions { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .quietActions button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .35);
+      color: var(--ink);
+      padding: 8px 10px;
+      font: inherit;
+      cursor: pointer;
+    }
     @media (max-width: 860px) {
       main { grid-template-columns: 1fr; }
       .side { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -161,6 +173,7 @@ def dashboard_html() -> str:
         <button data-tab="network" onclick="switchTab('network')">Network</button>
         <button data-tab="findings" onclick="switchTab('findings')">Findings</button>
         <button data-tab="devices" onclick="switchTab('devices')">Devices</button>
+        <button data-tab="lab" onclick="switchTab('lab')">Lab</button>
         <button data-tab="arsenal" onclick="switchTab('arsenal')">Arsenal</button>
       </nav>
       <div class="band panel active" data-panel="overview">
@@ -190,6 +203,13 @@ def dashboard_html() -> str:
           <thead><tr><th>MAC</th><th>IPs</th><th>Seen</th><th>Last seen</th></tr></thead>
           <tbody id="devices"></tbody>
         </table>
+      </div>
+      <div class="band panel" data-panel="lab">
+        <h2>Setup Reality Check</h2>
+        <pre id="placement">loading...</pre>
+        <h2 style="margin-top:22px">Attack Simulation</h2>
+        <div class="quietActions" id="simulationButtons"></div>
+        <pre id="simulation">choose a scenario</pre>
       </div>
       <div class="band panel" data-panel="arsenal">
         <h2>Arsenal</h2>
@@ -250,6 +270,8 @@ def dashboard_html() -> str:
       renderFindings(scan.findings || []);
       renderHistory(live.finding_history || []);
       renderDevices(live.devices || []);
+      renderPlacement(live.placement_report || {});
+      renderSimulationButtons(live.simulations || []);
       document.getElementById("tools").textContent = (live.tools || []).map(t => t.name + " [" + t.status + "]").join("\\n");
       document.getElementById("knowledge").textContent = [
         "God Mode readiness:",
@@ -296,6 +318,56 @@ def dashboard_html() -> str:
           <td>${d.last_seen || "-"}</td>
         </tr>
       `).join("");
+    }
+    function renderPlacement(report) {
+      const lines = [
+        "mode: " + (report.deployment_mode || "unknown"),
+        "active response: " + (report.active_response_enabled ? "yes" : "no"),
+        "firewall/controller automation: " + (report.firewall_controller_automation ? "yes" : "no"),
+        "summary: " + (report.summary || "not available"),
+        "same-subnet devices: " + (report.same_subnet_devices ?? "-"),
+        "routed subnets: " + ((report.routed_subnets || []).join(", ") || "none"),
+        "observed remote subnets: " + ((report.observed_remote_subnets || []).join(", ") || "none"),
+        "",
+        "can detect:",
+        ...((report.can_detect || []).map(c => "- " + c.name + " [" + c.status + "] " + c.detail)),
+        "",
+        "can prevent:",
+        ...((report.can_prevent || []).length ? report.can_prevent.map(c => "- " + c.name + " [" + c.status + "] " + c.detail) : ["- none from this placement"]),
+        "",
+        "cannot prevent:",
+        ...((report.cannot_prevent || []).map(c => "- " + c.name + " [" + c.status + "] " + c.detail)),
+        "",
+        "next steps:",
+        ...((report.next_steps || []).map(step => "- " + step))
+      ];
+      document.getElementById("placement").textContent = lines.join("\\n");
+    }
+    function renderSimulationButtons(scenarios) {
+      const target = document.getElementById("simulationButtons");
+      target.innerHTML = scenarios.map(name => `<button onclick="runLabScenario('${escapeHtml(name)}')">${escapeHtml(name)}</button>`).join("");
+    }
+    async function runLabScenario(scenario) {
+      const result = await getJson("/api/simulate?scenario=" + encodeURIComponent(scenario));
+      const lines = [
+        "scenario: " + result.scenario,
+        "isolated: " + (result.isolated ? "yes" : "no"),
+        "environment: " + result.environment,
+        "risk: " + result.risk_score + " face: " + result.face_state,
+        "",
+        "timeline:",
+        ...(result.timeline || []).flatMap(e => ["- " + e.phase + ": " + e.detail, "  view: " + e.protectogotchi_view]),
+        "",
+        "simulated packets:",
+        ...(result.packets || []).map(p => "- " + p.protocol + " " + p.source + " -> " + p.destination + " [" + p.verdict + "] " + p.summary),
+        "",
+        "findings:",
+        ...((result.findings || []).map(f => "- [" + f.severity + "] " + f.code + ": " + f.title)),
+        "",
+        "lessons:",
+        ...((result.lessons || []).map(l => "- " + l))
+      ];
+      document.getElementById("simulation").textContent = lines.join("\\n");
     }
     function renderGraph(graph) {
       const svg = document.getElementById("networkGraph");
@@ -434,6 +506,8 @@ class LiveWebState:
                     "finding_history": [],
                     "god_mode_readiness": god_mode_readiness(self.config),
                     "easy_protect_plan": easy_protect_plan(self.config),
+                    "placement_report": build_placement_report(self.config).to_dict(),
+                    "simulations": list(SCENARIOS),
                     "tools": [asdict(tool) for tool in list_tools()],
                     "knowledge": [asdict(topic) for topic in list_topics()],
                 }
@@ -478,6 +552,8 @@ class LiveWebState:
                 "finding_history": [],
                 "god_mode_readiness": god_mode_readiness(self.config),
                 "easy_protect_plan": easy_protect_plan(self.config),
+                "placement_report": build_placement_report(self.config).to_dict(),
+                "simulations": list(SCENARIOS),
                 "tools": [asdict(tool) for tool in list_tools()],
                 "knowledge": [asdict(topic) for topic in list_topics()],
             }
@@ -498,6 +574,7 @@ def _live_payload(
     mode: str = "learn",
 ) -> dict:
     state = StateStore(config.state_dir).load()
+    network_map = NetworkMapper().build(result.snapshot)
     return {
         "updated_at": utc_now(),
         "mode": mode,
@@ -506,11 +583,13 @@ def _live_payload(
         "scan": result.to_dict(),
         "topology_summary": topology.summary,
         "topology": topology.to_dict(),
-        "network_map": NetworkMapper().build(result.snapshot).to_dict(),
+        "network_map": network_map.to_dict(),
         "devices": sorted(state.devices.values(), key=lambda item: item.get("mac", "")),
         "finding_history": state.finding_history[-50:],
         "god_mode_readiness": god_mode_readiness(config),
         "easy_protect_plan": easy_protect_plan(config),
+        "placement_report": build_placement_report(config, network_map).to_dict(),
+        "simulations": list(SCENARIOS),
         "tools": [asdict(tool) for tool in list_tools()],
         "knowledge": [asdict(topic) for topic in list_topics()],
     }
@@ -588,6 +667,20 @@ def _handler(
                 return
             if parsed.path == "/api/knowledge":
                 self._send_json([asdict(topic) for topic in list_topics()])
+                return
+            if parsed.path == "/api/setup-wizard":
+                live = live_state.current()
+                self._send_json(live.get("placement_report", build_placement_report(config).to_dict()))
+                return
+            if parsed.path == "/api/simulations":
+                self._send_json(list(SCENARIOS))
+                return
+            if parsed.path == "/api/simulate":
+                scenario = query.get("scenario", ["arp-spoof"])[0]
+                try:
+                    self._send_json(run_simulation(scenario, config).to_dict())
+                except ValueError as exc:
+                    self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
                 return
             self._send_json({"error": "not found"}, status=HTTPStatus.NOT_FOUND)
 

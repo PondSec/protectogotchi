@@ -69,7 +69,9 @@ protectogotchi knowledge arp-spoofing
 protectogotchi enforcement
 protectogotchi enforcement inline-gateway
 protectogotchi easy-protect
+protectogotchi setup-wizard
 protectogotchi simulate arp-spoof
+protectogotchi simulate vlan-lateral-movement
 
 # Trust or untrust devices explicitly.
 protectogotchi trust-device --mac 00:11:22:33:44:55 --label laptop
@@ -88,6 +90,34 @@ active mode and administrator permissions.
 The MVP intentionally avoids cloud inference and avoids offensive Wi-Fi
 behavior. Active enforcement is a controlled response layer, not an attack
 toolkit.
+
+## Attack Simulation and Setup Wizard
+
+Protectogotchi includes a safe local lab simulator:
+
+```bash
+protectogotchi simulate arp-spoof
+protectogotchi simulate vlan-lateral-movement
+```
+
+These scenarios use synthetic snapshots only. They do not inject packets, do
+not redirect live traffic, and do not touch other devices. The goal is to show
+what an attack would look like from Protectogotchi's point of view, which
+findings fire, and what the user should learn from the event.
+
+The setup wizard is intentionally honest about placement:
+
+```bash
+protectogotchi setup-wizard
+```
+
+It does not automate firewall/router control, does not enable ARP spoofing, and
+does not claim that a normal client can block traffic between other devices. If
+Protectogotchi is only a client, it can detect, learn, alert, simulate, and
+protect its own host when local controls are configured. For true network-wide
+prevention without controlling an existing firewall/router, Protectogotchi must
+be deployed as an inline gateway/bridge, access-layer component, or endpoint
+agent.
 
 ## Authorized use
 
@@ -127,6 +157,11 @@ Important: Protectogotchi cannot reliably prevent all network traffic unless it
 controls an enforcement point such as the router/firewall/AP, a managed switch,
 an endpoint firewall, or an inline Pi gateway/bridge. It does not use covert
 ARP-spoofing MitM as a protection strategy.
+
+If you do not want Protectogotchi to control a firewall/router/API, keep it in
+observer plus simulation mode or deploy it physically/explicitly in path later.
+There is no client-only mechanism that can safely and reliably stop other
+devices' traffic without such a control point.
 
 ## Roadmap
 

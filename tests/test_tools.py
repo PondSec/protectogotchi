@@ -9,6 +9,7 @@ def test_tool_catalog_contains_available_and_planned_tools():
     assert get_tool("trust-device").status == "available"
     assert get_tool("enforcement").status == "available"
     assert get_tool("easy-protect").status == "available"
+    assert get_tool("setup-wizard").status == "available"
     assert get_tool("simulate").status == "available"
     assert get_tool("macos-pf-block").status == "planned"
 

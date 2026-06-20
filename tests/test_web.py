@@ -10,10 +10,13 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "/api/mode" in html
     assert "setInterval" in html
     assert "data-tab=\"overview\"" in html
+    assert "data-tab=\"lab\"" in html
     assert "data-mode=\"guard\"" in html
     assert "data-mode=\"god\"" in html
     assert "ACTIVATE GOD MODE" in html
     assert "does not enable covert ARP/MitM" in html
+    assert "/api/simulate" in html
+    assert "firewall/controller automation" in html
     assert "tools" in html
     assert "Protectogotchi" in html
     assert "border-radius" not in html
@@ -54,6 +57,10 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
     assert "finding_history" in payload
     assert "god_mode_readiness" in payload
     assert "easy_protect_plan" in payload
+    assert "placement_report" in payload
+    assert payload["placement_report"]["firewall_controller_automation"] is False
+    assert "simulations" in payload
+    assert "arp-spoof" in payload["simulations"]
     assert len(payload["devices"]) == 1
 
 

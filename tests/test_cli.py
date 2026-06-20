@@ -73,10 +73,44 @@ def test_easy_protect_command_lists_safe_paths(capsys):
     assert "transparent-bridge" in output
 
 
+def test_setup_wizard_reports_client_limits(monkeypatch, capsys):
+    from protectogotchi.models import Device, InterfaceInfo, NetworkSnapshot, Route, utc_now
+
+    class FakeCollector:
+        def collect(self):
+            return NetworkSnapshot(
+                taken_at=utc_now(),
+                hostname="test-host",
+                platform="test",
+                interfaces=[
+                    InterfaceInfo(name="en0", ipv4=["192.168.10.10/24"], status="active")
+                ],
+                routes=[
+                    Route(destination="default", gateway="192.168.10.1", interface="en0"),
+                    Route(destination="192.168.20.0/24", gateway="192.168.10.1", interface="en0"),
+                ],
+                devices=[
+                    Device(ip="192.168.10.1", mac="aa:aa:aa:aa:aa:aa", interface="en0"),
+                    Device(ip="192.168.10.77", mac="66:77:88:99:aa:bb", interface="en0"),
+                ],
+                default_gateway="192.168.10.1",
+                default_gateway_mac="aa:aa:aa:aa:aa:aa",
+            )
+
+    monkeypatch.setattr("protectogotchi.cli.get_collector", lambda _name: FakeCollector())
+    assert main(["setup-wizard"]) == 0
+    output = capsys.readouterr().out
+    assert "firewall_controller_automation=no" in output
+    assert "not-from-client" in output
+    assert "192.168.20.0/24" in output
+
+
 def test_simulate_command_runs_arp_spoof_scenario(capsys):
     assert main(["simulate", "arp-spoof"]) == 0
     output = capsys.readouterr().out
     assert "scenario=arp-spoof" in output
+    assert "isolated=yes" in output
+    assert "simulated_packets" in output
     assert "gateway_mac_changed" in output
 
 

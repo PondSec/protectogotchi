@@ -69,6 +69,12 @@ TOOLS: tuple[ToolDefinition, ...] = (
         command="protectogotchi easy-protect",
     ),
     ToolDefinition(
+        name="setup-wizard",
+        category="diagnose",
+        summary="Check what this placement can safely detect or prevent without ARP/MitM.",
+        command="protectogotchi setup-wizard",
+    ),
+    ToolDefinition(
         name="simulate",
         category="diagnose",
         summary="Run synthetic lab attack/anomaly scenarios without packet injection.",

@@ -20,6 +20,7 @@ from protectogotchi.face import FACES, render_face
 from protectogotchi.knowledge import get_topic, list_topics
 from protectogotchi.netutil import normalize_mac
 from protectogotchi.network_map import NetworkMapper
+from protectogotchi.placement import build_placement_report
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
 from protectogotchi.simulation import SCENARIOS, run_simulation
 from protectogotchi.state import StateStore
@@ -170,6 +171,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     easy_parser.add_argument("--json", action="store_true", help="Print JSON.")
 
+    setup_parser = subparsers.add_parser(
+        "setup-wizard",
+        help="Check what this placement can safely detect or prevent without ARP/MitM.",
+    )
+    setup_parser.add_argument("--json", action="store_true", help="Print JSON.")
+    setup_parser.add_argument(
+        "--collector",
+        choices=["macos", "linux"],
+        help="Force a collector instead of auto-detecting the platform.",
+    )
+
     simulate_parser = subparsers.add_parser(
         "simulate",
         help="Run a safe synthetic lab scenario without touching network traffic.",
@@ -307,17 +319,40 @@ def main(argv: list[str] | None = None) -> int:
         else:
             _print_easy_protect(plan)
         return 0
+    if args.command == "setup-wizard":
+        snapshot = get_collector(args.collector).collect()
+        report = build_placement_report(config, NetworkMapper().build(snapshot))
+        if args.json:
+            print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+        else:
+            _print_placement_report(report)
+        return 0
     if args.command == "simulate":
         result = run_simulation(args.scenario, config)
         if args.json:
             print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         else:
             print(f"scenario={result.scenario}")
+            print(f"isolated={'yes' if result.isolated else 'no'}")
+            print(f"environment={result.environment}")
             print(f"risk={result.risk_score} face={result.face_state}")
+            print("timeline:")
+            for event in result.timeline:
+                print(f"- {event.phase}: {event.detail}")
+                print(f"  view={event.protectogotchi_view}")
+            print("simulated_packets:")
+            for packet in result.packets:
+                print(
+                    f"- {packet.protocol} {packet.source} -> {packet.destination} "
+                    f"{packet.verdict}: {packet.summary}"
+                )
             for finding in result.findings:
                 print(f"[{finding['severity']}] {finding['code']}: {finding['title']}")
             for action in result.actions:
                 print(f"action={action['action_type']} target={action['target']} status={action['status']}")
+            print("lessons:")
+            for lesson in result.lessons:
+                print(f"- {lesson}")
         return 0
     if args.command == "trust-device":
         store = StateStore(config.state_dir)
@@ -513,6 +548,33 @@ def _print_easy_protect(plan: list[dict]) -> None:
         prevents = "prevents" if item.get("prevents") else "detects"
         print(f"- {item['mode']} ({item['effort']}, {prevents})")
         print(f"  {item['summary']}")
+
+
+def _print_placement_report(report) -> None:
+    print("Protectogotchi setup wizard")
+    print("mode=" + report.deployment_mode)
+    print(f"active_response={'yes' if report.active_response_enabled else 'no'}")
+    print("firewall_controller_automation=no")
+    print(report.summary)
+    if report.routed_subnets:
+        print("routed_subnets=" + ", ".join(report.routed_subnets))
+    if report.observed_remote_subnets:
+        print("observed_remote_subnets=" + ", ".join(report.observed_remote_subnets))
+    print(f"same_subnet_devices={report.same_subnet_devices}")
+    print("can_detect:")
+    for capability in report.can_detect:
+        print(f"- {capability.name} [{capability.status}] {capability.detail}")
+    print("can_prevent:")
+    if not report.can_prevent:
+        print("- none from this placement")
+    for capability in report.can_prevent:
+        print(f"- {capability.name} [{capability.status}] {capability.detail}")
+    print("cannot_prevent:")
+    for capability in report.cannot_prevent:
+        print(f"- {capability.name} [{capability.status}] {capability.detail}")
+    print("next_steps:")
+    for step in report.next_steps:
+        print(f"- {step}")
 
 
 def _print_topology(topology) -> None:
