@@ -31,7 +31,24 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
 protectogotchi --help
-protectogotchi face idle
+protectogotchi scan
+protectogotchi status
+```
+
+Useful commands:
+
+```bash
+# One local scan, update the baseline when the risk is low enough.
+protectogotchi scan
+
+# Machine-readable output for logs or a future dashboard.
+protectogotchi scan --json
+
+# Continuous local daemon mode.
+protectogotchi daemon --interval 10
+
+# Plan a defensive block without changing the system firewall.
+protectogotchi respond --ip 192.168.1.50 --reason "manual test"
 ```
 
 ## Safety model
@@ -39,3 +56,19 @@ protectogotchi face idle
 Protectogotchi defaults to observe-only behavior. It can propose defensive
 actions such as blocking a suspicious IP, but system-level changes require
 active mode and administrator permissions.
+
+The MVP intentionally avoids cloud inference and avoids offensive Wi-Fi
+behavior. Active enforcement is a controlled response layer, not an attack
+toolkit.
+
+## Roadmap
+
+- macOS MVP: local telemetry, baseline learning, anomaly scoring, XP/levels,
+  status faces, dry-run responses.
+- Hardened response layer: verified macOS pf setup and Raspberry Pi nftables
+  setup with explicit owner opt-in.
+- Local dashboard: face, mood, risk timeline, known devices, and response log.
+- Raspberry Pi 5 image: service unit, first-run setup, Wi-Fi interface
+  selection, and local-only configuration UI.
+- Stronger local AI: richer feature extraction, per-network profiles,
+  explainable scoring, and signed community rules.

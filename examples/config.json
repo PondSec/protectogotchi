@@ -1,0 +1,11 @@
+{
+  "state_dir": "~/.protectogotchi",
+  "sample_interval": 10,
+  "min_baseline_observations": 3,
+  "zscore_threshold": 3.5,
+  "high_zscore_threshold": 6,
+  "autolearn_max_score": 34,
+  "response_mode": "dry-run",
+  "allow_active_blocking": false,
+  "notify_on_medium": true
+}
