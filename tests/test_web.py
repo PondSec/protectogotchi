@@ -9,8 +9,8 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "/api/live" in html
     assert "/api/mode" in html
     assert "setInterval" in html
-    assert "data-tab=\"overview\"" in html
-    assert "data-tab=\"lab\"" in html
+    assert "data-tab=\"home\"" in html
+    assert "data-tab=\"practice\"" in html
     assert "data-mode=\"guard\"" in html
     assert "data-mode=\"god\"" in html
     assert "ACTIVATE GOD MODE" in html
@@ -20,8 +20,14 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "tools" in html
     assert "Protectogotchi" in html
     assert "border-radius" in html
-    assert "Gedanken" not in html
+    assert "Einordnung" in html
     assert "thought" in html
+    assert "Live-Aktivität" in html
+    assert "ohne Rohdatenwände" in html
+    assert "renderNetworkStory" in html
+    assert "petBlob" not in html
+    assert "Haustier" not in html
+    assert "JSON.stringify((live" not in html
 
 
 def test_live_payload_contains_scan_state_and_topology(tmp_path):
@@ -67,6 +73,7 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
     assert payload["pet_headline"]
     assert payload["thought"]
     assert payload["activity_summary"]
+    assert "quiet_scans" in payload
     assert "Ruhige Blicke" in "\n".join(payload["calm_status"])
 
 
