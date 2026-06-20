@@ -38,6 +38,12 @@ protectogotchi status
 For live source-tree development you can also run commands with
 `PYTHONPATH=src python -m protectogotchi ...`.
 
+To start the local web UI directly from the source tree:
+
+```bash
+python3 start.py
+```
+
 Useful commands:
 
 ```bash

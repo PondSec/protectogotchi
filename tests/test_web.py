@@ -19,13 +19,16 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "Automatisierung" in html
     assert "tools" in html
     assert "Protectogotchi" in html
-    assert "border-radius" in html
-    assert "Gedankenblase" in html
+    assert "Statusnotiz" in html
     assert "thought" in html
-    assert "Was gerade im Netzwerk los ist" in html
-    assert "Keine Fachsprache, keine JSON-Wände" in html
+    assert "Aktuelle Aktivität" in html
+    assert "klarer Sprache statt in Rohdaten" in html
     assert "renderNetworkStory" in html
     assert "JSON.stringify((live" not in html
+    assert "Netzwerkschutz, der sich wie ein kleines Haustier" not in html
+    assert "radial-gradient" not in html
+    assert "border-radius: 34px" not in html
+    assert "box-shadow: none" in html
 
 
 def test_live_payload_contains_scan_state_and_topology(tmp_path):
@@ -72,7 +75,7 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
     assert payload["thought"]
     assert payload["activity_summary"]
     assert "quiet_scans" in payload
-    assert "Ruhige Blicke" in "\n".join(payload["calm_status"])
+    assert "Ruhige Scans" in "\n".join(payload["calm_status"])
 
 
 def test_live_web_state_mode_switch_without_thread(tmp_path):
@@ -103,4 +106,4 @@ def test_live_web_state_god_mode_requires_confirmation(tmp_path):
 
     payload = live.set_mode("god", confirmation="ACTIVATE GOD MODE")
     assert payload["mode"] == "god"
-    assert "enforcement point" in payload["mode_description"]
+    assert "Enforcement-Punkt" in payload["mode_description"]
