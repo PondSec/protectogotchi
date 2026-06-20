@@ -9,8 +9,8 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "/api/live" in html
     assert "/api/mode" in html
     assert "setInterval" in html
-    assert "data-tab=\"overview\"" in html
-    assert "data-tab=\"lab\"" in html
+    assert "data-tab=\"home\"" in html
+    assert "data-tab=\"practice\"" in html
     assert "data-mode=\"guard\"" in html
     assert "data-mode=\"god\"" in html
     assert "ACTIVATE GOD MODE" in html
@@ -22,8 +22,10 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "border-radius" in html
     assert "Gedankenblase" in html
     assert "thought" in html
-    assert "Gerade im Netzwerk los" in html
-    assert "sheet" in html
+    assert "Was gerade im Netzwerk los ist" in html
+    assert "Keine Fachsprache, keine JSON-Wände" in html
+    assert "renderNetworkStory" in html
+    assert "JSON.stringify((live" not in html
 
 
 def test_live_payload_contains_scan_state_and_topology(tmp_path):
