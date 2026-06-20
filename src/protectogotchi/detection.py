@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.models import Finding, NetworkSnapshot, SEVERITY_SCORE
-from protectogotchi.state import ProtectogotchiState
+from protectogotchi.state import ProtectogotchiState, route_key, snapshot_subnets
 
 
 RISKY_REMOTE_PORTS = {
@@ -68,6 +68,26 @@ DETECTION_RULES: tuple[DetectionRule, ...] = (
         severity="medium",
         summary="A connection targets a remote admin or lateral-movement service.",
     ),
+    DetectionRule(
+        code="default_gateway_changed",
+        severity="high",
+        summary="The active default gateway IP is not part of the learned baseline.",
+    ),
+    DetectionRule(
+        code="new_subnet_seen",
+        severity="medium",
+        summary="A new local subnet appears after baseline warmup.",
+    ),
+    DetectionRule(
+        code="new_route_seen",
+        severity="medium",
+        summary="A new route appears after baseline warmup.",
+    ),
+    DetectionRule(
+        code="new_interface_seen",
+        severity="low",
+        summary="A new local network interface appears after baseline warmup.",
+    ),
 )
 
 
@@ -88,6 +108,7 @@ class AnomalyDetector:
         learning = state.is_learning(self.config.min_baseline_observations)
 
         findings.extend(self._detect_identity_changes(snapshot, state))
+        findings.extend(self._detect_topology_changes(snapshot, state, learning))
         findings.extend(self._detect_new_devices(snapshot, state, learning))
         findings.extend(self._detect_feature_anomalies(snapshot, state))
         findings.extend(self._detect_new_listeners(snapshot, state, learning))
@@ -162,6 +183,112 @@ class AnomalyDetector:
                     recommended_action=action,
                 )
             )
+
+        return findings
+
+    def _detect_topology_changes(
+        self,
+        snapshot: NetworkSnapshot,
+        state: ProtectogotchiState,
+        learning: bool,
+    ) -> list[Finding]:
+        if learning:
+            return []
+
+        findings: list[Finding] = []
+        if (
+            snapshot.default_gateway
+            and state.gateway_macs
+            and snapshot.default_gateway not in state.gateway_macs
+        ):
+            findings.append(
+                Finding(
+                    code="default_gateway_changed",
+                    title="Default gateway IP changed",
+                    severity="high",
+                    description=(
+                        "The active default gateway IP is not one of the gateways "
+                        "learned for this network."
+                    ),
+                    evidence={
+                        "current_gateway": snapshot.default_gateway,
+                        "known_gateways": sorted(state.gateway_macs),
+                    },
+                    recommended_action="alert_admin",
+                )
+            )
+
+        known_subnets = set(state.known_subnets)
+        if known_subnets:
+            for subnet in sorted(snapshot_subnets(snapshot) - known_subnets):
+                findings.append(
+                    Finding(
+                        code="new_subnet_seen",
+                        title="New local subnet observed",
+                        severity="medium",
+                        description=(
+                            "A local interface is attached to a subnet that was not "
+                            "part of the learned baseline."
+                        ),
+                        evidence={"subnet": subnet, "known_subnets": sorted(known_subnets)},
+                        recommended_action="investigate",
+                    )
+                )
+
+        known_routes = set(state.known_route_keys)
+        if known_routes:
+            for route in snapshot.routes:
+                key = route_key(route)
+                if key in known_routes:
+                    continue
+                if route.destination in {"default", "0.0.0.0/0"}:
+                    severity = "high"
+                    code = "new_default_route_seen"
+                    title = "New default route observed"
+                else:
+                    severity = "medium"
+                    code = "new_route_seen"
+                    title = "New route observed"
+                findings.append(
+                    Finding(
+                        code=code,
+                        title=title,
+                        severity=severity,  # type: ignore[arg-type]
+                        description=(
+                            "The route table contains an entry that was not part of "
+                            "the learned baseline."
+                        ),
+                        evidence={
+                            "destination": route.destination,
+                            "gateway": route.gateway,
+                            "interface": route.interface,
+                        },
+                        recommended_action="investigate",
+                    )
+                )
+
+        known_interfaces = set(state.known_interfaces)
+        if known_interfaces:
+            for interface in snapshot.interfaces:
+                if interface.name in known_interfaces:
+                    continue
+                findings.append(
+                    Finding(
+                        code="new_interface_seen",
+                        title="New network interface observed",
+                        severity="low",
+                        description=(
+                            "A network interface appeared after baseline warmup. "
+                            "This may be normal for VPNs, adapters, or virtual links."
+                        ),
+                        evidence={
+                            "interface": interface.name,
+                            "ipv4": interface.ipv4,
+                            "status": interface.status,
+                        },
+                        recommended_action="watch",
+                    )
+                )
 
         return findings
 

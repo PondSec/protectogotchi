@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import asdict, dataclass, field
+from ipaddress import ip_interface
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,9 @@ class ProtectogotchiState:
     feature_stats: dict[str, FeatureStats] = field(default_factory=dict)
     seen_listening_ports: list[int] = field(default_factory=list)
     trusted_devices: dict[str, dict[str, str]] = field(default_factory=dict)
+    known_route_keys: list[str] = field(default_factory=list)
+    known_subnets: list[str] = field(default_factory=list)
+    known_interfaces: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def known_macs(self) -> set[str]:
         return set(self.devices)
@@ -99,6 +103,24 @@ class ProtectogotchiState:
 
         if snapshot.default_gateway and snapshot.default_gateway_mac:
             self.gateway_macs[snapshot.default_gateway] = snapshot.default_gateway_mac.lower()
+
+        route_keys = set(self.known_route_keys)
+        route_keys.update(route_key(route) for route in snapshot.routes)
+        self.known_route_keys = sorted(route_keys)
+
+        subnets = set(self.known_subnets)
+        subnets.update(snapshot_subnets(snapshot))
+        self.known_subnets = sorted(subnets)
+
+        for interface in snapshot.interfaces:
+            self.known_interfaces[interface.name] = {
+                "name": interface.name,
+                "ipv4": interface.ipv4,
+                "ipv6": interface.ipv6,
+                "mac": interface.mac,
+                "status": interface.status,
+                "last_seen": now,
+            }
 
         for name, value in snapshot.features().items():
             stats = self.feature_stats.setdefault(name, FeatureStats())
@@ -159,3 +181,28 @@ class StateStore:
             json.dumps(state.to_dict(), indent=2, sort_keys=True),
             encoding="utf-8",
         )
+
+
+def route_key(route) -> str:
+    return "|".join(
+        [
+            route.destination,
+            route.gateway or "-",
+            route.interface or "-",
+            route.family,
+        ]
+    )
+
+
+def snapshot_subnets(snapshot: NetworkSnapshot) -> set[str]:
+    subnets: set[str] = set()
+    for interface in snapshot.interfaces:
+        for address in interface.ipv4:
+            try:
+                network = ip_interface(address).network
+            except ValueError:
+                continue
+            if network.is_loopback or network.is_link_local or network.is_multicast:
+                continue
+            subnets.add(str(network))
+    return subnets

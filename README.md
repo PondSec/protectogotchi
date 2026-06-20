@@ -54,8 +54,8 @@ protectogotchi snapshot
 protectogotchi topology
 protectogotchi topology --json
 
-# Run local web status/API. Binds to localhost by default.
-protectogotchi web --host 127.0.0.1 --port 8765
+# Run realtime local web status/API. Binds to localhost by default.
+protectogotchi web --host 127.0.0.1 --port 8765 --scan-interval 3
 
 # Continuous local daemon mode.
 protectogotchi daemon --interval 10

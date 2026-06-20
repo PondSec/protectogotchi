@@ -3,7 +3,7 @@ from __future__ import annotations
 from protectogotchi.collectors import get_collector
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.detection import AnomalyDetector
-from protectogotchi.models import ScanResult
+from protectogotchi.models import Finding, ScanResult
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
 from protectogotchi.state import StateStore
 
@@ -31,7 +31,7 @@ class ProtectogotchiAgent:
             actions = [self.executor.execute(action) for action in actions]
 
         learned = False
-        if learn and analysis.risk_score <= self.config.autolearn_max_score:
+        if self._should_learn(learn, state, analysis.findings, analysis.risk_score):
             state.learn(snapshot)
             learned = True
 
@@ -48,3 +48,16 @@ class ProtectogotchiAgent:
             level=state.level,
             xp=state.xp,
         )
+
+    def _should_learn(
+        self,
+        learn: bool,
+        state,
+        findings: list[Finding],
+        risk_score: int,
+    ) -> bool:
+        if not learn or risk_score > self.config.autolearn_max_score:
+            return False
+        if state.is_learning(self.config.min_baseline_observations):
+            return all(finding.severity == "info" for finding in findings)
+        return all(finding.severity == "info" for finding in findings)

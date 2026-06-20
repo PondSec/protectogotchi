@@ -1,6 +1,13 @@
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.detection import AnomalyDetector
-from protectogotchi.models import Connection, Device, NetworkSnapshot, utc_now
+from protectogotchi.models import (
+    Connection,
+    Device,
+    InterfaceInfo,
+    NetworkSnapshot,
+    Route,
+    utc_now,
+)
 from protectogotchi.response import ResponsePlanner
 from protectogotchi.state import ProtectogotchiState
 
@@ -9,16 +16,21 @@ def make_snapshot(
     *,
     devices: list[Device] | None = None,
     connections: list[Connection] | None = None,
+    interfaces: list[InterfaceInfo] | None = None,
+    routes: list[Route] | None = None,
     gateway_mac: str = "aa:aa:aa:aa:aa:aa",
+    gateway_ip: str = "192.168.1.1",
 ) -> NetworkSnapshot:
-    gateway = Device(ip="192.168.1.1", mac=gateway_mac, interface="en0")
+    gateway = Device(ip=gateway_ip, mac=gateway_mac, interface="en0")
     return NetworkSnapshot(
         taken_at=utc_now(),
         hostname="test-host",
         platform="test-platform",
+        interfaces=interfaces or [],
+        routes=routes or [],
         devices=[gateway, *(devices or [])],
         connections=connections or [],
-        default_gateway="192.168.1.1",
+        default_gateway=gateway_ip,
         default_gateway_mac=gateway_mac,
     )
 
@@ -91,6 +103,35 @@ def test_feature_spike_is_detected_against_local_baseline():
         finding.code == "feature_spike_connection_count"
         for finding in analysis.findings
     )
+    assert analysis.risk_score >= 35
+
+
+def test_new_route_and_subnet_after_learning_phase_are_detected():
+    config = ProtectogotchiConfig(min_baseline_observations=3)
+    state = ProtectogotchiState()
+    baseline = make_snapshot(
+        interfaces=[InterfaceInfo(name="en0", ipv4=["192.168.1.10/24"])],
+        routes=[Route(destination="default", gateway="192.168.1.1", interface="en0")],
+    )
+    for _ in range(3):
+        state.learn(baseline)
+
+    changed = make_snapshot(
+        interfaces=[
+            InterfaceInfo(name="en0", ipv4=["192.168.1.10/24"]),
+            InterfaceInfo(name="utun9", ipv4=["10.99.0.2/24"]),
+        ],
+        routes=[
+            Route(destination="default", gateway="192.168.1.1", interface="en0"),
+            Route(destination="10.99.0.0/24", gateway=None, interface="utun9"),
+        ],
+    )
+    analysis = AnomalyDetector(config).analyze(changed, state)
+
+    codes = {finding.code for finding in analysis.findings}
+    assert "new_subnet_seen" in codes
+    assert "new_route_seen" in codes
+    assert "new_interface_seen" in codes
     assert analysis.risk_score >= 35
 
 

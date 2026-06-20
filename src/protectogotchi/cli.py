@@ -125,6 +125,11 @@ def build_parser() -> argparse.ArgumentParser:
     web_parser.add_argument("--host", default="127.0.0.1", help="Bind host.")
     web_parser.add_argument("--port", type=int, default=8765, help="Bind port.")
     web_parser.add_argument(
+        "--scan-interval",
+        type=float,
+        help="Seconds between live background scans. Defaults to a realtime-safe value.",
+    )
+    web_parser.add_argument(
         "--collector",
         choices=["macos", "linux"],
         help="Force a collector instead of auto-detecting the platform.",
@@ -249,7 +254,13 @@ def main(argv: list[str] | None = None) -> int:
             _print_topology(topology)
         return 0
     if args.command == "web":
-        run_web(config, host=args.host, port=args.port, collector_name=args.collector)
+        run_web(
+            config,
+            host=args.host,
+            port=args.port,
+            collector_name=args.collector,
+            scan_interval=args.scan_interval,
+        )
         return 0
     if args.command == "rules":
         for rule in list_detection_rules():
