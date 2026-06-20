@@ -11,12 +11,16 @@ from protectogotchi.collectors import get_collector
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.detection import list_detection_rules
 from protectogotchi.doctor import run_doctor
+from protectogotchi.enforcement import get_enforcement_mode, list_enforcement_modes
 from protectogotchi.face import FACES, render_face
 from protectogotchi.knowledge import get_topic, list_topics
 from protectogotchi.netutil import normalize_mac
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
+from protectogotchi.simulation import SCENARIOS, run_simulation
 from protectogotchi.state import StateStore
 from protectogotchi.tools import list_tools
+from protectogotchi.topology import TopologyBuilder
+from protectogotchi.web import run_web
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -109,6 +113,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Force a collector instead of auto-detecting the platform.",
     )
 
+    topology_parser = subparsers.add_parser("topology", help="Build a passive network topology.")
+    topology_parser.add_argument("--json", action="store_true", help="Print full topology JSON.")
+    topology_parser.add_argument(
+        "--collector",
+        choices=["macos", "linux"],
+        help="Force a collector instead of auto-detecting the platform.",
+    )
+
+    web_parser = subparsers.add_parser("web", help="Run the local web UI/API.")
+    web_parser.add_argument("--host", default="127.0.0.1", help="Bind host.")
+    web_parser.add_argument("--port", type=int, default=8765, help="Bind port.")
+    web_parser.add_argument(
+        "--collector",
+        choices=["macos", "linux"],
+        help="Force a collector instead of auto-detecting the platform.",
+    )
+
     subparsers.add_parser("rules", help="List local detection rules.")
 
     knowledge_parser = subparsers.add_parser("knowledge", help="Browse local network knowledge.")
@@ -118,6 +139,19 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Hide planned knowledge modules.",
     )
+
+    enforcement_parser = subparsers.add_parser(
+        "enforcement",
+        help="Explain active protection/enforcement modes.",
+    )
+    enforcement_parser.add_argument("mode", nargs="?", help="Optional enforcement mode.")
+
+    simulate_parser = subparsers.add_parser(
+        "simulate",
+        help="Run a safe synthetic lab scenario without touching network traffic.",
+    )
+    simulate_parser.add_argument("scenario", choices=SCENARIOS)
+    simulate_parser.add_argument("--json", action="store_true", help="Print JSON.")
 
     trust_parser = subparsers.add_parser("trust-device", help="Trust a device MAC.")
     trust_parser.add_argument("--mac", required=True, help="MAC address to trust.")
@@ -206,12 +240,37 @@ def main(argv: list[str] | None = None) -> int:
         snapshot = get_collector(args.collector).collect()
         print(json.dumps(snapshot.to_dict(), indent=2, sort_keys=True))
         return 0
+    if args.command == "topology":
+        snapshot = get_collector(args.collector).collect()
+        topology = TopologyBuilder().build(snapshot)
+        if args.json:
+            print(json.dumps(topology.to_dict(), indent=2, sort_keys=True))
+        else:
+            _print_topology(topology)
+        return 0
+    if args.command == "web":
+        run_web(config, host=args.host, port=args.port, collector_name=args.collector)
+        return 0
     if args.command == "rules":
         for rule in list_detection_rules():
             print(f"- {rule.code} [{rule.severity}] {rule.summary}")
         return 0
     if args.command == "knowledge":
         return _handle_knowledge(args)
+    if args.command == "enforcement":
+        return _handle_enforcement(args)
+    if args.command == "simulate":
+        result = run_simulation(args.scenario, config)
+        if args.json:
+            print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(f"scenario={result.scenario}")
+            print(f"risk={result.risk_score} face={result.face_state}")
+            for finding in result.findings:
+                print(f"[{finding['severity']}] {finding['code']}: {finding['title']}")
+            for action in result.actions:
+                print(f"action={action['action_type']} target={action['target']} status={action['status']}")
+        return 0
     if args.command == "trust-device":
         store = StateStore(config.state_dir)
         state = store.load()
@@ -362,3 +421,42 @@ def _print_topic(topic) -> None:
     print("response_playbook:")
     for step in topic.response_playbook:
         print(f"- {step}")
+
+
+def _handle_enforcement(args: argparse.Namespace) -> int:
+    if args.mode:
+        mode = get_enforcement_mode(args.mode)
+        if mode is None:
+            print(f"Unknown enforcement mode: {args.mode}")
+            return 2
+        _print_enforcement_mode(mode)
+        return 0
+
+    for mode in list_enforcement_modes():
+        prevent = "prevents" if mode.can_prevent else "detects-only"
+        print(f"- {mode.name} ({mode.scope}, {prevent}, {mode.current_status})")
+        print(f"  {mode.summary}")
+    return 0
+
+
+def _print_enforcement_mode(mode) -> None:
+    prevent = "yes" if mode.can_prevent else "no"
+    print(f"{mode.name} ({mode.scope})")
+    print(f"can_prevent={prevent}")
+    print(f"status={mode.current_status}")
+    print(mode.summary)
+    print("requirements:")
+    for requirement in mode.requirements:
+        print(f"- {requirement}")
+
+
+def _print_topology(topology) -> None:
+    print("summary:")
+    for kind, count in sorted(topology.summary.items()):
+        print(f"- {kind}: {count}")
+    print("nodes:")
+    for node in topology.nodes:
+        print(f"- {node.id} [{node.kind}] {node.label}")
+    print("edges:")
+    for edge in topology.edges:
+        print(f"- {edge.source} --{edge.relation}--> {edge.target}")

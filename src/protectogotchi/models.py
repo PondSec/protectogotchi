@@ -44,6 +44,24 @@ class Device:
 
 
 @dataclass
+class InterfaceInfo:
+    name: str
+    ipv4: list[str] = field(default_factory=list)
+    ipv6: list[str] = field(default_factory=list)
+    mac: str | None = None
+    status: str | None = None
+
+
+@dataclass
+class Route:
+    destination: str
+    gateway: str | None = None
+    interface: str | None = None
+    flags: str | None = None
+    family: str = "inet"
+
+
+@dataclass
 class Connection:
     protocol: str
     local_address: str
@@ -80,6 +98,8 @@ class NetworkSnapshot:
     hostname: str
     platform: str
     wifi: WifiInfo = field(default_factory=WifiInfo)
+    interfaces: list[InterfaceInfo] = field(default_factory=list)
+    routes: list[Route] = field(default_factory=list)
     devices: list[Device] = field(default_factory=list)
     connections: list[Connection] = field(default_factory=list)
     default_gateway: str | None = None
@@ -107,6 +127,8 @@ class NetworkSnapshot:
             ),
             "unique_remote_count": float(len(unique_remotes)),
             "listening_port_count": float(len(listening_ports)),
+            "interface_count": float(len(self.interfaces)),
+            "route_count": float(len(self.routes)),
         }
 
     def listening_ports(self) -> set[int]:
@@ -122,6 +144,8 @@ class NetworkSnapshot:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "NetworkSnapshot":
         wifi = WifiInfo(**data.get("wifi", {}))
+        interfaces = [InterfaceInfo(**item) for item in data.get("interfaces", [])]
+        routes = [Route(**item) for item in data.get("routes", [])]
         devices = [Device(**item) for item in data.get("devices", [])]
         connections = [Connection(**item) for item in data.get("connections", [])]
         return cls(
@@ -129,6 +153,8 @@ class NetworkSnapshot:
             hostname=data["hostname"],
             platform=data["platform"],
             wifi=wifi,
+            interfaces=interfaces,
+            routes=routes,
             devices=devices,
             connections=connections,
             default_gateway=data.get("default_gateway"),

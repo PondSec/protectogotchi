@@ -27,6 +27,18 @@ TOOLS: tuple[ToolDefinition, ...] = (
         command="protectogotchi snapshot",
     ),
     ToolDefinition(
+        name="topology",
+        category="observe",
+        summary="Build a passive map of host, interfaces, subnets, routes, gateways, and devices.",
+        command="protectogotchi topology",
+    ),
+    ToolDefinition(
+        name="web",
+        category="interface",
+        summary="Run local web status/API for network card, topology, tools, and knowledge.",
+        command="protectogotchi web --host 127.0.0.1 --port 8765",
+    ),
+    ToolDefinition(
         name="rules",
         category="diagnose",
         summary="List local detection rules and their severity.",
@@ -37,6 +49,18 @@ TOOLS: tuple[ToolDefinition, ...] = (
         category="diagnose",
         summary="Browse local network-defense knowledge and playbooks.",
         command="protectogotchi knowledge",
+    ),
+    ToolDefinition(
+        name="enforcement",
+        category="respond",
+        summary="Explain which deployment modes can actively prevent attacks.",
+        command="protectogotchi enforcement",
+    ),
+    ToolDefinition(
+        name="simulate",
+        category="diagnose",
+        summary="Run synthetic lab attack/anomaly scenarios without packet injection.",
+        command="protectogotchi simulate arp-spoof",
     ),
     ToolDefinition(
         name="scan",

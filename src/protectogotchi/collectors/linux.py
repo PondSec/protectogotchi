@@ -5,7 +5,15 @@ import socket
 import subprocess
 
 from protectogotchi.collectors.base import Collector
-from protectogotchi.models import Connection, Device, NetworkSnapshot, WifiInfo, utc_now
+from protectogotchi.models import (
+    Connection,
+    Device,
+    InterfaceInfo,
+    NetworkSnapshot,
+    Route,
+    WifiInfo,
+    utc_now,
+)
 from protectogotchi.netutil import is_relevant_neighbor
 
 
@@ -19,6 +27,8 @@ class LinuxCollector(Collector):
             hostname=socket.gethostname(),
             platform=platform.platform(),
             wifi=self._wifi_info(),
+            interfaces=self._interfaces(),
+            routes=self._routes(),
             devices=devices,
             connections=self._connections(),
             default_gateway=gateway,
@@ -88,6 +98,50 @@ class LinuxCollector(Collector):
                 )
             )
         return connections
+
+    def _interfaces(self) -> list[InterfaceInfo]:
+        output = self._run(["ip", "-o", "addr", "show"])
+        by_name: dict[str, InterfaceInfo] = {}
+        for line in output.splitlines():
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            name = parts[1]
+            interface = by_name.setdefault(name, InterfaceInfo(name=name))
+            if parts[2] == "inet":
+                interface.ipv4.append(parts[3])
+            elif parts[2] == "inet6":
+                interface.ipv6.append(parts[3])
+
+        link_output = self._run(["ip", "-o", "link", "show"])
+        for line in link_output.splitlines():
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            name = parts[1].rstrip(":")
+            interface = by_name.setdefault(name, InterfaceInfo(name=name))
+            if "link/ether" in parts:
+                interface.mac = parts[parts.index("link/ether") + 1].lower()
+            if "state" in parts:
+                interface.status = parts[parts.index("state") + 1].lower()
+        return list(by_name.values())
+
+    def _routes(self) -> list[Route]:
+        output = self._run(["ip", "route", "show"])
+        routes: list[Route] = []
+        for line in output.splitlines():
+            parts = line.split()
+            if not parts:
+                continue
+            destination = parts[0]
+            gateway = None
+            iface = None
+            if "via" in parts:
+                gateway = parts[parts.index("via") + 1]
+            if "dev" in parts:
+                iface = parts[parts.index("dev") + 1]
+            routes.append(Route(destination=destination, gateway=gateway, interface=iface))
+        return routes
 
     def _split_host_port(self, value: str) -> tuple[str | None, int | None]:
         if value in {"*", "*:*"}:

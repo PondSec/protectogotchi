@@ -5,9 +5,18 @@ import re
 import socket
 import subprocess
 from pathlib import Path
+from ipaddress import IPv4Network, ip_address
 
 from protectogotchi.collectors.base import Collector
-from protectogotchi.models import Connection, Device, NetworkSnapshot, WifiInfo, utc_now
+from protectogotchi.models import (
+    Connection,
+    Device,
+    InterfaceInfo,
+    NetworkSnapshot,
+    Route,
+    WifiInfo,
+    utc_now,
+)
 from protectogotchi.netutil import is_relevant_neighbor
 
 
@@ -27,6 +36,8 @@ class MacOSCollector(Collector):
             hostname=socket.gethostname(),
             platform=platform.platform(),
             wifi=wifi,
+            interfaces=self._interfaces(),
+            routes=self._routes(),
             devices=devices,
             connections=self._connections(),
             default_gateway=gateway,
@@ -112,6 +123,69 @@ class MacOSCollector(Collector):
             connections.extend(self._parse_netstat(output, proto))
         return connections
 
+    def _interfaces(self) -> list[InterfaceInfo]:
+        output = self._run(["ifconfig"])
+        interfaces: list[InterfaceInfo] = []
+        current: InterfaceInfo | None = None
+        for line in output.splitlines():
+            if line and not line.startswith("\t") and ":" in line:
+                name = line.split(":", 1)[0]
+                current = InterfaceInfo(name=name)
+                interfaces.append(current)
+                continue
+            if current is None:
+                continue
+            stripped = line.strip()
+            if stripped.startswith("status:"):
+                current.status = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("ether "):
+                current.mac = stripped.split()[1].lower()
+            elif stripped.startswith("inet "):
+                parts = stripped.split()
+                ip = parts[1]
+                prefix = None
+                if "netmask" in parts:
+                    mask = parts[parts.index("netmask") + 1]
+                    prefix = self._prefix_from_macos_netmask(mask)
+                current.ipv4.append(f"{ip}/{prefix}" if prefix is not None else ip)
+            elif stripped.startswith("inet6 "):
+                parts = stripped.split()
+                current.ipv6.append(parts[1].split("%", 1)[0])
+        return interfaces
+
+    def _routes(self) -> list[Route]:
+        output = self._run(["netstat", "-rn", "-f", "inet"])
+        routes: list[Route] = []
+        in_table = False
+        for line in output.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("Destination"):
+                in_table = True
+                continue
+            if not in_table:
+                continue
+            parts = stripped.split()
+            if len(parts) < 3:
+                continue
+            destination = parts[0]
+            gateway = None if parts[1].startswith("link#") else parts[1]
+            if gateway is not None and not self._is_ip(gateway):
+                gateway = None
+            flags = parts[2] if len(parts) > 2 else None
+            iface = parts[3] if len(parts) > 3 else None
+            routes.append(
+                Route(
+                    destination=destination,
+                    gateway=gateway,
+                    interface=iface,
+                    flags=flags,
+                    family="inet",
+                )
+            )
+        return routes
+
     def _parse_netstat(self, output: str, proto: str) -> list[Connection]:
         connections: list[Connection] = []
         for line in output.splitlines():
@@ -159,3 +233,19 @@ class MacOSCollector(Collector):
             return int(value)
         except ValueError:
             return None
+
+    def _prefix_from_macos_netmask(self, value: str) -> int | None:
+        try:
+            if value.startswith("0x"):
+                mask_int = int(value, 16)
+                return bin(mask_int).count("1")
+            return IPv4Network(f"0.0.0.0/{value}").prefixlen
+        except ValueError:
+            return None
+
+    def _is_ip(self, value: str) -> bool:
+        try:
+            ip_address(value)
+        except ValueError:
+            return False
+        return True

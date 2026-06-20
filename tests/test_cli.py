@@ -37,6 +37,20 @@ def test_knowledge_command_shows_playbook(capsys):
     assert "response_playbook" in output
 
 
+def test_enforcement_command_explains_inline_mode(capsys):
+    assert main(["enforcement", "inline-gateway"]) == 0
+    output = capsys.readouterr().out
+    assert "can_prevent=yes" in output
+    assert "default gateway" in output
+
+
+def test_simulate_command_runs_arp_spoof_scenario(capsys):
+    assert main(["simulate", "arp-spoof"]) == 0
+    output = capsys.readouterr().out
+    assert "scenario=arp-spoof" in output
+    assert "gateway_mac_changed" in output
+
+
 def test_trust_and_untrust_device_commands(tmp_path, capsys):
     mac = "00-11-22-33-44-55"
     assert main(["--state-dir", str(tmp_path), "trust-device", "--mac", mac, "--label", "laptop"]) == 0

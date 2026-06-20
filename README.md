@@ -50,6 +50,13 @@ protectogotchi scan --json
 # Export raw telemetry without learning.
 protectogotchi snapshot
 
+# Build a passive topology from interfaces, routes, gateways, subnets, and devices.
+protectogotchi topology
+protectogotchi topology --json
+
+# Run local web status/API. Binds to localhost by default.
+protectogotchi web --host 127.0.0.1 --port 8765
+
 # Continuous local daemon mode.
 protectogotchi daemon --interval 10
 
@@ -58,6 +65,9 @@ protectogotchi tools
 protectogotchi rules
 protectogotchi knowledge
 protectogotchi knowledge arp-spoofing
+protectogotchi enforcement
+protectogotchi enforcement inline-gateway
+protectogotchi simulate arp-spoof
 
 # Trust or untrust devices explicitly.
 protectogotchi trust-device --mac 00:11:22:33:44:55 --label laptop
@@ -76,6 +86,21 @@ active mode and administrator permissions.
 The MVP intentionally avoids cloud inference and avoids offensive Wi-Fi
 behavior. Active enforcement is a controlled response layer, not an attack
 toolkit.
+
+## Authorized use
+
+Protectogotchi is intended for networks you own or are explicitly authorized to
+defend, including university lab networks where you have written permission.
+The project does not implement covert ARP-spoofing or MitM takeover as a
+protection mechanism. For network-wide prevention, use an owner-controlled
+enforcement point: router/controller integration, managed AP/switch quarantine,
+endpoint firewall agents, or a Raspberry Pi running as an explicit gateway/AP or
+transparent bridge.
+
+Important: Protectogotchi cannot reliably prevent all network traffic unless it
+controls an enforcement point such as the router/firewall/AP, a managed switch,
+an endpoint firewall, or an inline Pi gateway/bridge. It does not use covert
+ARP-spoofing MitM as a protection strategy.
 
 ## Roadmap
 
