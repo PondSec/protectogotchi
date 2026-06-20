@@ -16,6 +16,19 @@ def test_tools_command_lists_available_arsenal(capsys):
     assert "planned" not in output
 
 
+def test_toolbox_lists_external_tools(capsys):
+    assert main(["toolbox"]) == 0
+    output = capsys.readouterr().out
+    assert "External defensive tools" in output
+    assert "nmap" in output
+
+
+def test_toolbox_refuses_public_targets(capsys):
+    assert main(["toolbox", "--target", "8.8.8.8"]) == 2
+    output = capsys.readouterr().out
+    assert "non-private" in output
+
+
 def test_baseline_show_uses_state_dir(tmp_path, capsys):
     assert main(["--state-dir", str(tmp_path), "baseline", "show"]) == 0
     output = capsys.readouterr().out

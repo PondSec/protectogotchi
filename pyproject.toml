@@ -18,6 +18,9 @@ dependencies = []
 dev = [
   "pytest>=8"
 ]
+ml = [
+  "torch>=2.2"
+]
 
 [project.scripts]
 protectogotchi = "protectogotchi.cli:main"

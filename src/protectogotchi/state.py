@@ -9,6 +9,7 @@ from typing import Any
 
 from protectogotchi.models import Finding, NetworkSnapshot, utc_now
 from protectogotchi.netutil import normalize_mac
+from protectogotchi.neural import train_neural_baseline
 
 
 @dataclass
@@ -59,6 +60,8 @@ class ProtectogotchiState:
     known_subnets: list[str] = field(default_factory=list)
     known_interfaces: dict[str, dict[str, Any]] = field(default_factory=dict)
     finding_history: list[dict[str, Any]] = field(default_factory=list)
+    neural_model: dict[str, Any] = field(default_factory=dict)
+    policy_model: dict[str, Any] = field(default_factory=dict)
 
     def known_macs(self) -> set[str]:
         return set(self.devices)
@@ -139,6 +142,8 @@ class ProtectogotchiState:
         for name, value in snapshot.features().items():
             stats = self.feature_stats.setdefault(name, FeatureStats())
             stats.update(value)
+
+        self.neural_model = train_neural_baseline(self.neural_model, snapshot.features())
 
         ports = set(self.seen_listening_ports)
         ports.update(snapshot.listening_ports())

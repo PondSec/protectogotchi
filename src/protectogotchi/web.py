@@ -15,7 +15,9 @@ from protectogotchi.enforcement import easy_protect_plan, god_mode_readiness
 from protectogotchi.knowledge import list_topics
 from protectogotchi.models import ScanResult, utc_now
 from protectogotchi.network_map import NetworkMapper
+from protectogotchi.neural import neural_model_summary
 from protectogotchi.placement import build_placement_report
+from protectogotchi.policy import policy_model_summary
 from protectogotchi.simulation import SCENARIOS, run_simulation
 from protectogotchi.state import StateStore
 from protectogotchi.tools import list_tools
@@ -289,24 +291,44 @@ def dashboard_html() -> str:
     .mode-grid .btn.active { border-color: var(--info); color: var(--info); }
     .ai-state {
       display: grid;
-      grid-template-columns: 72px 1fr;
+      grid-template-columns: 120px 1fr;
       gap: 16px;
       align-items: center;
     }
     .ai-face {
-      width: 72px;
-      height: 72px;
+      width: 120px;
+      height: 120px;
       border: 1px solid var(--line);
       border-radius: 6px;
       display: grid;
       place-items: center;
       color: var(--text);
       font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 20px;
+      font-size: 32px;
       line-height: 1;
     }
     .ai-headline { margin: 0; font-size: 20px; line-height: 1.2; }
     .ai-copy { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .detail-list { display: grid; border-top: 1px solid var(--line); }
+    .detail-line {
+      display: grid;
+      grid-template-columns: minmax(112px, 34%) 1fr;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .detail-line span:first-child { color: var(--muted); text-transform: uppercase; }
+    .arsenal-list { display: grid; border-top: 1px solid var(--line); }
+    .arsenal-line {
+      display: grid;
+      grid-template-columns: 96px 1fr auto;
+      gap: 8px;
+      align-items: start;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
     .log-list { display: grid; border-top: 1px solid var(--line); }
     .log-line { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
     .empty-state { color: var(--muted); font-size: 14px; padding: 16px 0; }
@@ -483,7 +505,7 @@ def dashboard_html() -> str:
           <div class="panel-header">
             <div>
               <h2 class="panel-title">AI State</h2>
-              <p class="panel-subtitle">Sekundärer Companion-Status</p>
+              <p class="panel-subtitle">Live-Zustand des lokalen Agenten</p>
             </div>
             <span class="status-pill" id="aiStatusPill">loading</span>
           </div>
@@ -501,17 +523,44 @@ def dashboard_html() -> str:
         <section class="panel">
           <div class="panel-header">
             <div>
-              <h2 class="panel-title">Export & Simulation</h2>
-              <p class="panel-subtitle">Daten sichern und Erkennung gefahrlos prüfen</p>
+              <h2 class="panel-title">Neural Engine</h2>
+              <p class="panel-subtitle">PyTorch Autoencoder und DQN-Policy</p>
+            </div>
+            <span class="status-pill" id="nnStatusPill">loading</span>
+          </div>
+          <div class="panel-body">
+            <div class="detail-list" id="neuralDetails">
+              <div class="detail-line"><span>Backend</span><strong>warte</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Arsenal</h2>
+              <p class="panel-subtitle">Defensive Fähigkeiten und Integrationen</p>
+            </div>
+            <span class="status-pill status-info" id="arsenalCount">0 tools</span>
+          </div>
+          <div class="panel-body">
+            <div class="arsenal-list" id="arsenalRows">
+              <div class="empty-state">Arsenal wird geladen.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Export</h2>
+              <p class="panel-subtitle">Live-Daten lokal sichern</p>
             </div>
           </div>
           <div class="panel-body">
             <div class="button-row">
               <button class="btn btn-primary" onclick="exportSnapshot()">Export JSON</button>
-              <button class="btn" onclick="runLabScenario('arp-spoof')">ARP-Simulation</button>
-              <button class="btn" onclick="runLabScenario('vlan-lateral-movement')">VLAN-Simulation</button>
             </div>
-            <div class="log-list" id="simulationLog" aria-label="Simulationsergebnis"></div>
           </div>
         </section>
 
@@ -536,12 +585,23 @@ def dashboard_html() -> str:
     </nav>
   </div>
   <script>
-    const faces = { idle:"( -_-)", bored:"( -_-) z", learning:"( o_o)", analyzing:"( @_@)", alert:"( O_O)!", fighting:"( >_<)", happy:"( ^_^)", curious:"( •_•)?" };
+    const faceVariants = {
+      idle:["( -_-)", "( ._.)", "( -.-)"],
+      bored:["( -_-) z", "( -.-) z", "( ._.)"],
+      learning:["( o_o)", "( ._.)?", "( o_o)"],
+      analyzing:["( @_@)", "( o_O)", "( @_-)"],
+      alert:["( O_O)!", "(! o_o)", "( O_O)"],
+      fighting:["( >_<)", "( >_>)!", "( <_<)!"],
+      happy:["( ^_^)", "( ^.^)", "( ^_-)"],
+      curious:["( ?_?)", "( o_o)?", "( ._.)?"],
+    };
     const severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
     let currentLive = null;
     let threatSort = { key: "time", direction: "desc" };
     let activeMobilePanel = "assets";
     let touchStartX = 0;
+    let currentFaceState = "idle";
+    let faceTick = 0;
 
     async function getJson(path) {
       const response = await fetch(path);
@@ -559,6 +619,8 @@ def dashboard_html() -> str:
       renderThreatMatrix(live);
       renderFeed(live);
       renderDevices(live.devices || []);
+      renderNeuralEngine(live);
+      renderArsenal(live.tools || []);
       renderLogs(live);
     }
 
@@ -583,10 +645,17 @@ def dashboard_html() -> str:
       const scan = live.scan || {};
       const faceState = live.pet_state || scan.face_state || "idle";
       const risk = scan.risk_score || 0;
-      document.getElementById("aiFace").textContent = faces[faceState] || faces.idle;
+      currentFaceState = faceState;
+      animateFace();
       document.getElementById("aiHeadline").textContent = live.pet_headline || "Initialisierung";
       document.getElementById("aiCopy").textContent = live.thought || "Warte auf Live-Daten.";
       setPill(document.getElementById("aiStatusPill"), riskStatus(risk), riskLabel(risk));
+    }
+
+    function animateFace() {
+      const variants = faceVariants[currentFaceState] || faceVariants.idle;
+      document.getElementById("aiFace").textContent = variants[faceTick % variants.length];
+      faceTick += 1;
     }
 
     function renderAssets(live) {
@@ -663,6 +732,46 @@ def dashboard_html() -> str:
           <td class="mono">${escapeHtml(device.mac || "-")}</td>
           <td class="mono">${escapeHtml(shortTime(device.last_seen || "-"))}</td>
         </tr>
+      `).join("");
+    }
+
+    function renderNeuralEngine(live) {
+      const scan = live.scan || {};
+      const ai = scan.ai || live.ai_engine || {};
+      const neural = ai.neural || (live.ai_engine || {}).neural || {};
+      const policy = ai.policy || (live.ai_engine || {}).policy || {};
+      const backendReady = neural.backend_available !== false && (live.ai_engine || {}).neural_summary?.backend_available !== false;
+      setPill(document.getElementById("nnStatusPill"), backendReady ? "info" : "attention", backendReady ? "PyTorch" : "Backend fehlt");
+      const lines = [
+        ["Backend", backendReady ? "pytorch aktiv" : "pytorch nicht installiert"],
+        ["NN Score", String(neural.score ?? 0)],
+        ["NN Samples", String(neural.observations ?? (live.ai_engine || {}).neural_summary?.observations ?? 0)],
+        ["Policy", policy.action || (live.ai_engine || {}).policy_summary?.last_action || "warte"],
+        ["Safety", policy.safety_gate || "allow"],
+      ];
+      document.getElementById("neuralDetails").innerHTML = lines.map(([label, value]) => `
+        <div class="detail-line"><span>${escapeHtml(label)}</span><strong class="mono">${escapeHtml(value)}</strong></div>
+      `).join("");
+    }
+
+    function renderArsenal(tools) {
+      const target = document.getElementById("arsenalRows");
+      document.getElementById("arsenalCount").textContent = tools.length + " tools";
+      if (!tools.length) {
+        target.innerHTML = "<div class='empty-state'>Keine Arsenal-Daten verfügbar.</div>";
+        return;
+      }
+      const priority = ["ml", "observe", "diagnose", "respond", "integrate", "deploy"];
+      const rows = tools
+        .slice()
+        .sort((a, b) => (priority.indexOf(a.category) - priority.indexOf(b.category)) || a.name.localeCompare(b.name))
+        .slice(0, 12);
+      target.innerHTML = rows.map(tool => `
+        <div class="arsenal-line">
+          <span class="mono">${escapeHtml(tool.category)}</span>
+          <span>${escapeHtml(tool.name)}<br><span class="mono">${escapeHtml(tool.summary)}</span></span>
+          ${pillHtml(tool.status === "available" ? "safe" : "info", tool.status)}
+        </div>
       `).join("");
     }
 
@@ -848,6 +957,7 @@ def dashboard_html() -> str:
 
     setMobilePanel("assets");
     refresh().catch(error => { document.getElementById("feedRows").innerHTML = `<div class="empty-state">${escapeHtml(String(error))}</div>`; });
+    setInterval(animateFace, 900);
     setInterval(() => refresh().catch(() => {}), 1500);
   </script>
 </body>
@@ -897,6 +1007,7 @@ class LiveWebState:
                     "network_map": {},
                     "devices": [],
                     "finding_history": [],
+                    "ai_engine": _ai_engine_summary(self.config),
                     "god_mode_readiness": god_mode_readiness(self.config),
                     "easy_protect_plan": easy_protect_plan(self.config),
                     "placement_report": build_placement_report(self.config).to_dict(),
@@ -960,6 +1071,7 @@ class LiveWebState:
                 "network_map": {},
                 "devices": [],
                 "finding_history": [],
+                "ai_engine": _ai_engine_summary(self.config),
                 "god_mode_readiness": god_mode_readiness(self.config),
                 "easy_protect_plan": easy_protect_plan(self.config),
                 "placement_report": build_placement_report(self.config).to_dict(),
@@ -1018,6 +1130,7 @@ def _live_payload(
         "network_map": network_map.to_dict(),
         "devices": sorted(state.devices.values(), key=lambda item: item.get("mac", "")),
         "finding_history": state.finding_history[-50:],
+        "ai_engine": _ai_engine_summary(config, state),
         "god_mode_readiness": god_mode_readiness(config),
         "easy_protect_plan": easy_protect_plan(config),
         "placement_report": build_placement_report(config, network_map).to_dict(),
@@ -1030,6 +1143,17 @@ def _live_payload(
 
 def analysis_is_quiet(result: ScanResult) -> bool:
     return result.risk_score < 10 and all(finding.severity == "info" for finding in result.findings)
+
+
+def _ai_engine_summary(
+    config: ProtectogotchiConfig,
+    state=None,
+) -> dict[str, object]:
+    state = state or StateStore(config.state_dir).load()
+    return {
+        "neural_summary": neural_model_summary(state.neural_model),
+        "policy_summary": policy_model_summary(state.policy_model),
+    }
 
 
 def _pet_narration(

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.models import Finding, NetworkSnapshot, SEVERITY_SCORE
+from protectogotchi.neural import evaluate_neural_model
 from protectogotchi.state import ProtectogotchiState, route_key, snapshot_subnets
 
 
@@ -23,6 +24,7 @@ class Analysis:
     findings: list[Finding]
     risk_score: int
     face_state: str
+    neural: dict
 
 
 @dataclass(frozen=True)
@@ -88,6 +90,11 @@ DETECTION_RULES: tuple[DetectionRule, ...] = (
         severity="low",
         summary="A new local network interface appears after baseline warmup.",
     ),
+    DetectionRule(
+        code="neural_behavior_anomaly",
+        severity="medium/high",
+        summary="PyTorch autoencoder reconstruction error indicates behavior drift.",
+    ),
 )
 
 
@@ -113,12 +120,19 @@ class AnomalyDetector:
         findings.extend(self._detect_feature_anomalies(snapshot, state))
         findings.extend(self._detect_new_listeners(snapshot, state, learning))
         findings.extend(self._detect_risky_remote_services(snapshot))
+        neural = evaluate_neural_model(
+            state.neural_model,
+            snapshot.features(),
+            min_observations=self.config.min_baseline_observations,
+        )
+        findings.extend(self._detect_neural_anomaly(neural))
 
         risk_score = self._score(findings)
         return Analysis(
             findings=findings,
             risk_score=risk_score,
             face_state=self._face_state(risk_score, findings, learning),
+            neural=neural.to_dict(),
         )
 
     def _detect_identity_changes(
@@ -441,6 +455,24 @@ class AnomalyDetector:
                 )
             )
         return findings
+
+    def _detect_neural_anomaly(self, neural) -> list[Finding]:
+        if not neural.ready or neural.score < 35:
+            return []
+        severity = "high" if neural.score >= 70 else "medium"
+        return [
+            Finding(
+                code="neural_behavior_anomaly",
+                title="Neural network detected behavior drift",
+                severity=severity,  # type: ignore[arg-type]
+                description=(
+                    "The local PyTorch autoencoder reconstructs this network state "
+                    "poorly compared with the learned baseline."
+                ),
+                evidence=neural.to_dict(),
+                recommended_action="investigate",
+            )
+        ]
 
     def _score(self, findings: list[Finding]) -> int:
         if not findings:

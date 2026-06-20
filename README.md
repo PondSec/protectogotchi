@@ -88,6 +88,11 @@ protectogotchi daemon --interval 10
 
 # List the defensive arsenal, rules, and local network knowledge.
 protectogotchi tools
+protectogotchi arsenal
+protectogotchi toolbox
+protectogotchi toolbox --target 192.168.1.1
+protectogotchi toolbox --pcap capture.pcap
+protectogotchi ai
 protectogotchi rules
 protectogotchi knowledge
 protectogotchi knowledge arp-spoofing
@@ -105,6 +110,50 @@ protectogotchi untrust-device --mac 00:11:22:33:44:55
 # Plan a defensive block without changing the system firewall.
 protectogotchi respond --ip 192.168.1.50 --reason "manual test"
 ```
+
+## Local AI engine
+
+Protectogotchi now has a real neural backend interface:
+
+- `NetML`: PyTorch deep autoencoder for local network-metric anomaly detection.
+- `DQN policy`: PyTorch safety-gated Deep-Q style policy for defensive action
+  prioritization.
+- `protectogotchi ai`: shows whether the PyTorch backend is installed, model
+  observations, hidden/latent units, and policy update state.
+
+Install the ML runtime when you want the neural network to execute locally:
+
+```bash
+python -m pip install ".[ml]"
+```
+
+Without the `ml` extra, Protectogotchi still runs detection, baselines, topology
+mapping, UI, and the capability orchestrator, but it reports the neural backend
+as unavailable instead of pretending a framework model is active.
+
+## Modular arsenal
+
+The defensive arsenal is split into many Python modules under
+`src/protectogotchi/capabilities/` and coordinated through
+`ProtectogotchiArsenalOrchestrator`. Run:
+
+```bash
+protectogotchi arsenal
+protectogotchi arsenal --json
+```
+
+Current modules cover IP planning, VLAN/config rendering, route analysis,
+DNS/DHCP planning, flow metadata, authorized pcap analysis, firewall policy
+rendering, IDS ingestion, zero-trust decisions, threat intel normalization,
+vulnerability-report ingestion, authorized assessment-report ingestion, malware
+sandbox verdict import, SIEM normalization, IR playbooks, compliance mapping,
+automation routing, NetML, and the local dashboard manifest.
+
+`protectogotchi toolbox` discovers existing defensive tools such as `nmap`,
+`tcpdump`, `tshark`, `zeek`, `suricata`, `snort`, `snmpwalk`, `dig`,
+`traceroute`, `mtr`, `pfctl`, and `nft`. Generated target plans are limited to
+private or local addresses, and review-risk actions such as Nmap service
+inventory or pcap parsing require an explicit `--execute --yes`.
 
 ## Safety model
 

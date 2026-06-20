@@ -4,6 +4,7 @@ from protectogotchi.collectors import get_collector
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.detection import AnomalyDetector
 from protectogotchi.models import Finding, ScanResult
+from protectogotchi.policy import recommend_policy
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
 from protectogotchi.state import StateStore
 
@@ -26,6 +27,14 @@ class ProtectogotchiAgent:
         state = self.store.load()
         analysis = self.detector.analyze(snapshot, state)
         actions = self.planner.plan(analysis.findings, snapshot)
+        policy, policy_model = recommend_policy(
+            state.policy_model,
+            analysis.findings,
+            risk_score=analysis.risk_score,
+            neural_score=int(analysis.neural.get("score", 0)),
+            config=self.config,
+        )
+        state.policy_model = policy_model
 
         if execute_actions:
             actions = [self.executor.execute(action) for action in actions]
@@ -47,6 +56,10 @@ class ProtectogotchiAgent:
             learned=learned,
             level=state.level,
             xp=state.xp,
+            ai={
+                "neural": analysis.neural,
+                "policy": policy.to_dict(),
+            },
         )
 
     def _should_learn(

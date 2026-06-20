@@ -7,6 +7,7 @@ from pathlib import Path
 
 from protectogotchi import __version__
 from protectogotchi.agent import ProtectogotchiAgent
+from protectogotchi.arsenal import assess_arsenal
 from protectogotchi.collectors import get_collector
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.detection import list_detection_rules
@@ -16,11 +17,14 @@ from protectogotchi.enforcement import (
     get_enforcement_mode,
     list_enforcement_modes,
 )
+from protectogotchi.external_tools import ExternalToolRuntime
 from protectogotchi.face import FACES, render_face
 from protectogotchi.knowledge import get_topic, list_topics
 from protectogotchi.netutil import normalize_mac
 from protectogotchi.network_map import NetworkMapper
+from protectogotchi.neural import neural_model_summary
 from protectogotchi.placement import build_placement_report
+from protectogotchi.policy import policy_model_summary
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
 from protectogotchi.simulation import SCENARIOS, run_simulation
 from protectogotchi.state import StateStore
@@ -84,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser("status", help="Show local level, XP, and baseline status.")
+    subparsers.add_parser("ai", help="Show local neural network and DQN policy status.")
 
     respond_parser = subparsers.add_parser("respond", help="Plan or execute a defensive response.")
     respond_parser.add_argument("--ip", required=True, help="IP address to block.")
@@ -100,6 +105,26 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Hide planned tools and show only commands available in this MVP.",
     )
+
+    arsenal_parser = subparsers.add_parser(
+        "arsenal",
+        help="Assess the modular defensive capability framework.",
+    )
+    arsenal_parser.add_argument("--json", action="store_true", help="Print JSON.")
+
+    toolbox_parser = subparsers.add_parser(
+        "toolbox",
+        help="Discover and use installed defensive network tools.",
+    )
+    toolbox_parser.add_argument("--json", action="store_true", help="Print JSON.")
+    toolbox_parser.add_argument("--target", help="Private/local IP or CIDR to plan diagnostics for.")
+    toolbox_parser.add_argument("--pcap", type=Path, help="Authorized pcap file to plan analysis for.")
+    toolbox_parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Execute generated commands. Review-risk actions also require --yes.",
+    )
+    toolbox_parser.add_argument("--yes", action="store_true", help="Confirm review-risk tool execution.")
 
     subparsers.add_parser("doctor", help="Check local platform tool availability.")
 
@@ -240,6 +265,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"known_devices={len(state.devices)}")
         print(f"state_file={StateStore(config.state_dir).path}")
         return 0
+    if args.command == "ai":
+        state = StateStore(config.state_dir).load()
+        print(json.dumps(
+            {
+                "neural": neural_model_summary(state.neural_model),
+                "policy": policy_model_summary(state.policy_model),
+            },
+            indent=2,
+            sort_keys=True,
+        ))
+        return 0
     if args.command == "respond":
         action = ResponsePlanner(config).block_command_preview(args.ip)
         from protectogotchi.models import ResponseAction
@@ -259,6 +295,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "tools":
         _print_tools(include_planned=not args.available_only)
         return 0
+    if args.command == "arsenal":
+        report = assess_arsenal(config)
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            _print_arsenal(report)
+        return 0
+    if args.command == "toolbox":
+        return _handle_toolbox(args)
     if args.command == "doctor":
         checks = run_doctor()
         for check in checks:
@@ -432,6 +477,70 @@ def _print_tools(include_planned: bool) -> None:
         )
 
 
+def _print_arsenal(report: dict) -> None:
+    print("Protectogotchi modular arsenal")
+    for status, count in sorted(report.get("summary", {}).items()):
+        print(f"{status}={count}")
+    for result in report.get("results", []):
+        print(f"- {result['module']} [{result['status']}] {result['summary']}")
+
+
+def _handle_toolbox(args: argparse.Namespace) -> int:
+    runtime = ExternalToolRuntime()
+    payload: dict
+    try:
+        if args.target:
+            actions = runtime.plan_for_target(args.target)
+            payload = {
+                "target": args.target,
+                "actions": [action.to_dict() for action in actions],
+            }
+            if args.execute:
+                results = runtime.run_plan(actions, allow_review=args.yes)
+                payload["results"] = [result.to_dict() for result in results]
+                payload["decision"] = runtime.decide([result.parsed for result in results])
+        elif args.pcap:
+            actions = runtime.plan_for_pcap(args.pcap)
+            payload = {
+                "pcap": str(args.pcap),
+                "actions": [action.to_dict() for action in actions],
+            }
+            if args.execute:
+                results = runtime.run_plan(actions, allow_review=args.yes)
+                payload["results"] = [result.to_dict() for result in results]
+                payload["decision"] = runtime.decide([result.parsed for result in results])
+        else:
+            payload = runtime.report()
+    except ValueError as exc:
+        print(str(exc))
+        return 2
+
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        _print_toolbox(payload)
+    return 0
+
+
+def _print_toolbox(payload: dict) -> None:
+    if "tools" in payload:
+        print("External defensive tools")
+        print(f"available={payload['available_count']} total={payload['total_count']}")
+        for tool in payload["tools"]:
+            status = "available" if tool["available"] else "missing"
+            print(f"- {tool['name']} [{status}] {tool['purpose']}")
+        for recommendation in payload.get("recommendations", []):
+            print(f"recommendation={recommendation}")
+        return
+    for action in payload.get("actions", []):
+        review = "review" if action["requires_review"] else "safe"
+        print(f"- {action['tool']} ({review}) {' '.join(action['command'])}")
+    for result in payload.get("results", []):
+        print(f"result={result['action']['tool']} status={result['status']}")
+    if "decision" in payload:
+        print("decision=" + json.dumps(payload["decision"], sort_keys=True))
+
+
 def _handle_baseline(args: argparse.Namespace, config: ProtectogotchiConfig) -> int:
     store = StateStore(config.state_dir)
     if args.baseline_command == "show":
@@ -444,6 +553,8 @@ def _handle_baseline(args: argparse.Namespace, config: ProtectogotchiConfig) -> 
         print(f"known_routes={len(state.known_route_keys)}")
         print(f"known_subnets={len(state.known_subnets)}")
         print(f"known_interfaces={len(state.known_interfaces)}")
+        print(f"neural_observations={neural_model_summary(state.neural_model)['observations']}")
+        print(f"policy_updates={policy_model_summary(state.policy_model)['updates']}")
         print(f"gateway_macs={json.dumps(state.gateway_macs, sort_keys=True)}")
         print("feature_stats:")
         for name, stats in sorted(state.feature_stats.items()):
