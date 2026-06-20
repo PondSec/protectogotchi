@@ -1,4 +1,12 @@
-from protectogotchi.models import Device, NetworkSnapshot, ScanResult, utc_now
+from protectogotchi.models import (
+    Connection,
+    Device,
+    InterfaceInfo,
+    NetworkSnapshot,
+    Route,
+    ScanResult,
+    utc_now,
+)
 from protectogotchi.state import StateStore
 from protectogotchi.topology import TopologyBuilder
 from protectogotchi.web import LiveWebState, _live_payload, dashboard_html
@@ -9,26 +17,50 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "/api/live" in html
     assert "/api/mode" in html
     assert "setInterval" in html
-    assert "data-tab=\"home\"" in html
-    assert "data-tab=\"practice\"" in html
     assert "data-mode=\"guard\"" in html
     assert "data-mode=\"god\"" in html
     assert "ACTIVATE GOD MODE" in html
-    assert "kein heimliches ARP/MitM" in html
+    assert "Kein heimliches ARP/MitM" in html
     assert "/api/simulate" in html
-    assert "Automatisierung" in html
-    assert "tools" in html
     assert "Protectogotchi" in html
-    assert "Statusnotiz" in html
-    assert "thought" in html
-    assert "Aktuelle Aktivität" in html
-    assert "klarer Sprache statt in Rohdaten" in html
-    assert "renderNetworkStory" in html
+    assert "Local defensive network AI" in html
+    assert "console-grid" in html
+    assert "Asset Graph" in html
+    assert "Bedrohungsmatrix" in html
+    assert "Realtime Feed" in html
+    assert "Steuerung" in html
+    assert "AI State" in html
+    assert "mobile-nav" in html
+    assert "Export JSON" in html
+    assert "sortThreats" in html
+    assert "setMobilePanel" in html
+    assert "brand-mark" in html
+    assert ">P</div>" in html
     assert "JSON.stringify((live" not in html
     assert "Netzwerkschutz, der sich wie ein kleines Haustier" not in html
+
+
+def test_dashboard_html_uses_strict_enterprise_design_system():
+    html = dashboard_html()
+    for color in (
+        "#0D1117",
+        "#161B22",
+        "#21262D",
+        "#E6EDF3",
+        "#8B949E",
+        "#3FB950",
+        "#F0883E",
+        "#F85149",
+        "#58A6FF",
+    ):
+        assert color in html
+
     assert "radial-gradient" not in html
+    assert "linear-gradient" not in html
+    assert "backdrop-filter" not in html
+    assert "box-shadow" not in html
+    assert "card" not in html.lower()
     assert "border-radius: 34px" not in html
-    assert "box-shadow: none" in html
 
 
 def test_live_payload_contains_scan_state_and_topology(tmp_path):
@@ -39,7 +71,21 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
         taken_at=utc_now(),
         hostname="test-host",
         platform="test",
+        interfaces=[InterfaceInfo(name="en0", ipv4=["192.168.1.20/24"], status="active")],
+        routes=[
+            Route(destination="default", gateway="192.168.1.1", interface="en0"),
+            Route(destination="10.20.0.0/16", gateway="192.168.1.254", interface="en0"),
+        ],
         devices=[Device(ip="192.168.1.1", mac="aa:aa:aa:aa:aa:aa")],
+        connections=[
+            Connection(
+                protocol="tcp",
+                local_address="192.168.1.20",
+                remote_address="10.20.4.8",
+                remote_port=443,
+                state="ESTABLISHED",
+            )
+        ],
         default_gateway="192.168.1.1",
         default_gateway_mac="aa:aa:aa:aa:aa:aa",
     )
@@ -60,9 +106,15 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
 
     assert payload["state"]["baseline_ready"]
     assert payload["mode"] == "watch"
+    assert payload["runtime"]["network_mode"] == "observer"
+    assert payload["runtime"]["response_mode"] == "dry-run"
+    assert "uptime_seconds" in payload["runtime"]
     assert payload["scan"]["face_state"] == "happy"
-    assert payload["topology_summary"]["gateway"] == 1
+    assert payload["topology_summary"]["gateway"] == 2
     assert "network_map" in payload
+    assert "192.168.1.0/24" in payload["network_map"]["subnets"]
+    assert "10.20.0.0/16" in payload["network_map"]["subnets"]
+    assert "10.20.4.0/24" in payload["network_map"]["observed_remote_subnets"]
     assert "finding_history" in payload
     assert "god_mode_readiness" in payload
     assert "easy_protect_plan" in payload

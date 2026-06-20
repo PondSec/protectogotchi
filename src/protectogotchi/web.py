@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from dataclasses import asdict
@@ -23,19 +24,19 @@ from protectogotchi.topology import NetworkTopology, TopologyBuilder
 
 WEB_MODES: dict[str, dict[str, object]] = {
     "learn": {
-        "label": "Learn",
+        "label": "Lernen",
         "description": "Lernt unauffällige Beobachtungen als normales Verhalten.",
     },
     "watch": {
-        "label": "Watch",
+        "label": "Beobachten",
         "description": "Beobachtet und bewertet, ohne die Baseline zu verändern.",
     },
     "guard": {
-        "label": "Guard",
+        "label": "Schützen",
         "description": "Beobachtet, lernt vorsichtig und bereitet Schutzreaktionen vor.",
     },
     "god": {
-        "label": "God",
+        "label": "Autopilot",
         "description": "Autonomer Schutzmodus nach ausdrücklicher Aktivierung. Netzwerkweiter Schutz braucht einen echten Enforcement-Punkt; heimliches ARP/MitM ist nicht Teil dieses Modus.",
     },
     "pause": {
@@ -54,154 +55,800 @@ def dashboard_html() -> str:
   <title>Protectogotchi</title>
   <style>
     :root {
-      color-scheme: light;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --bg: #f6f8fb;
-      --ink: #17202a;
-      --soft-ink: #64748b;
-      --faint-ink: #8a98aa;
-      --line: #d8e0ea;
-      --panel: #ffffff;
-      --panel-soft: #f9fbfd;
-      --good: #0f766e;
-      --wait: #b7791f;
-      --bad: #b42318;
-      --focus: #1f3a5f;
-      --blue-soft: #e8f1ff;
-      --green-soft: #e7f7ef;
-      --amber-soft: #fff4db;
-      --red-soft: #ffebe8;
+      color-scheme: dark;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      --bg: #0D1117;
+      --panel: #161B22;
+      --line: #21262D;
+      --text: #E6EDF3;
+      --muted: #8B949E;
+      --safe: #3FB950;
+      --attention: #F0883E;
+      --critical: #F85149;
+      --info: #58A6FF;
     }
     * { box-sizing: border-box; }
+    html { background: var(--bg); }
     body {
       margin: 0;
       min-height: 100vh;
-      color: var(--ink);
+      color: var(--text);
+      background: var(--bg);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    button, input { font: inherit; }
+    button {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+    }
+    button:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--info);
+      outline-offset: 2px;
+    }
+    .app-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--line);
       background: var(--bg);
     }
-    button { appearance: none; border: 0; font: inherit; cursor: pointer; }
-    .app { width: min(1440px, 100%); margin: 0 auto; padding: 0 clamp(18px, 4vw, 46px) 42px; }
-    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; padding: 26px 0 22px; border-bottom: 1px solid var(--line); margin-bottom: 0; }
-    .brandMark { display: inline-flex; align-items: center; gap: 10px; color: var(--soft-ink); font-size: 14px; }
-    .brandDot { width: 10px; height: 10px; border-radius: 99px; background: var(--good); box-shadow: 0 0 0 7px rgba(18,128,107,.12); }
-    h1 { margin: 12px 0 8px; font-size: clamp(34px, 5vw, 64px); line-height: 1.03; letter-spacing: 0; max-width: 940px; font-weight: 780; }
-    .subtitle { margin: 0; max-width: 790px; color: var(--soft-ink); font-size: clamp(16px, 1.8vw, 20px); line-height: 1.55; }
-    .modeDock { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; max-width: 520px; }
-    .modeDock button, .tabs button, .pillButton { border-radius: 8px; padding: 10px 13px; color: var(--ink); background: transparent; border: 1px solid var(--line); }
-    .modeDock button:hover, .tabs button:hover, .pillButton:hover { background: var(--panel-soft); }
-    .modeDock button.active, .tabs button.active { color: #fff; background: var(--focus); border-color: var(--focus); }
-    .dashboard { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 30px; align-items: start; }
-    .companion { position: sticky; top: 0; display: grid; gap: 0; padding-top: 22px; border-right: 1px solid var(--line); min-height: calc(100vh - 98px); padding-right: 28px; }
-    .mascotPanel, .section, .tabs { background: transparent; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; }
-    .mascotPanel { padding: 0 0 22px; overflow: hidden; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
-    .mascotHero { display: grid; grid-template-columns: 118px 1fr; gap: 18px; align-items: center; }
-    .petBlob { width: 118px; aspect-ratio: 1; border-radius: 14px; display: grid; place-items: center; background: var(--panel); border: 1px solid var(--line); }
-    .face { font: 850 34px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .state { margin: 0 0 6px; font-size: 25px; font-weight: 760; letter-spacing: 0; }
-    .muted { color: var(--soft-ink); }
-    .thoughtCloud { margin-top: 22px; padding: 16px 0 0; border-top: 1px solid var(--line); line-height: 1.55; }
-    .thoughtCloud::after { content: none; }
-    .eyebrow { display: block; margin-bottom: 6px; color: var(--faint-ink); font-size: 12px; font-weight: 760; letter-spacing: .08em; text-transform: uppercase; }
-    .senseGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .sense { padding: 15px 0; border-top: 1px solid var(--line); }
-    .sense:nth-child(-n+2) { border-top: 0; }
-    .sense span { display:block; font-size: 12px; color: var(--soft-ink); }
-    .sense strong { display:block; margin-top: 3px; font-size: 24px; letter-spacing: 0; }
-    .risk-low { color: var(--good); } .risk-mid { color: var(--wait); } .risk-high { color: var(--bad); }
-    .work { padding-top: 22px; }
-    .tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; padding: 0 0 18px; margin-bottom: 0; background: var(--bg); border-bottom: 1px solid var(--line); }
-    .panel { display: none; } .panel.active { display: grid; gap: 0; }
-    .section { padding: 28px 0; overflow: hidden; border-bottom: 1px solid var(--line); }
-    .sectionTitle { margin: 0 0 8px; font-size: clamp(24px, 2.6vw, 36px); letter-spacing: 0; font-weight: 760; }
-    .sectionLead { margin: 0 0 22px; color: var(--soft-ink); line-height: 1.55; max-width: 850px; }
-    .two { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 28px; }
-    .lineList { display: grid; gap: 0; }
-    .story { padding: 15px 0; border-top: 1px solid var(--line); line-height: 1.5; }
-    .story:first-child { border-top: 0; padding-top: 0; }
-    .story strong { display:block; margin-bottom: 4px; }
-    .softStrip { display:flex; flex-wrap:wrap; gap:10px; margin: 14px 0 0; }
-    .tag { display:inline-flex; align-items:center; gap:8px; border-radius:8px; padding:8px 10px; background: var(--panel); border:1px solid var(--line); color:var(--soft-ink); }
-    .quietbar { height: 10px; border-radius: 5px; overflow:hidden; background:#e6ebf2; margin-top: 12px; }
-    .quietbar > span { display:block; height:100%; background:linear-gradient(90deg,var(--good),#7aa7d9); }
-    .mapWrap { padding: 0; background: transparent; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-    svg { width: 100%; min-height: 390px; background: var(--panel-soft); }
-    .nodeLabel { font: 13px ui-sans-serif, system-ui; fill: var(--ink); font-weight: 800; }
-    .nodeMeta { font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--soft-ink); }
-    .link { stroke: #aab8c8; stroke-width: 1.5; stroke-linecap: round; }
-    .node { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.3; rx: 8; ry: 8; }
-    .node.gateway, .node.default-gateway { stroke: var(--good); stroke-width: 2.5; }
-    .node.host { fill: var(--blue-soft); } .node.subnet { fill: var(--panel); } .node.interface { fill: var(--green-soft); }
-    .miniTable { width: 100%; border-collapse: collapse; }
-    .miniTable th, .miniTable td { text-align:left; padding: 13px 8px; border-top:1px solid var(--line); vertical-align:top; }
-    .miniTable th { color: var(--soft-ink); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #42526a; }
-    .tinyDetail { margin-top: 10px; color: var(--soft-ink); font-size: 13px; }
-    .severity-critical, .severity-high { color: var(--bad); } .severity-medium { color: var(--wait); }
-    @media (max-width: 980px) { .topbar, .dashboard, .two { grid-template-columns: 1fr; display: grid; } .modeDock { justify-content: flex-start; } .companion, .tabs { position: static; } .companion { border-right: 0; min-height: auto; padding-right: 0; } }
-    @media (max-width: 560px) { .mascotHero { grid-template-columns: 1fr; } .petBlob { width: 112px; } .senseGrid { grid-template-columns: 1fr; } }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 240px; }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: var(--info);
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .brand h1 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 700; }
+    .brand-subtitle { color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .system-strip { display: flex; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
+    .system-item { min-width: 88px; }
+    .system-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+    .system-value {
+      display: block;
+      margin-top: 4px;
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      color: var(--text);
+    }
+    /* Design decision: fixed enterprise columns keep operational density predictable. */
+    .console-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 30%) minmax(416px, 45%) minmax(280px, 25%);
+      gap: 16px;
+      padding: 16px 24px 24px;
+      min-height: 0;
+    }
+    .column { min-width: 0; display: grid; gap: 16px; align-content: start; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      min-width: 0;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-title { margin: 0; font-size: 16px; line-height: 1.4; font-weight: 700; }
+    .panel-subtitle { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .panel-body { padding: 16px; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 24px;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .status-pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--info);
+    }
+    .status-safe { color: var(--safe); border-color: var(--safe); }
+    .status-safe::before { background: var(--safe); }
+    .status-attention { color: var(--attention); border-color: var(--attention); }
+    .status-attention::before { background: var(--attention); }
+    .status-critical { color: var(--critical); border-color: var(--critical); }
+    .status-critical::before { background: var(--critical); }
+    .status-info { color: var(--info); border-color: var(--info); }
+    .status-info::before { background: var(--info); }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+    .metric {
+      padding: 12px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .metric-label { color: var(--muted); font-size: 12px; line-height: 1.4; text-transform: uppercase; }
+    .metric-value { margin-top: 4px; font-size: 24px; line-height: 1.2; font-weight: 700; }
+    .asset-canvas {
+      position: relative;
+      min-height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    svg { width: 100%; min-height: 360px; display: block; }
+    .link { stroke: var(--line); stroke-width: 1.5; }
+    .node { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; rx: 6; ry: 6; }
+    .node.host { stroke: var(--info); }
+    .node.gateway, .node.default-gateway { stroke: var(--safe); }
+    .node.endpoint, .node.local-host, .node.infrastructure-candidate { stroke: var(--muted); }
+    .nodeLabel { fill: var(--text); font-size: 12px; font-weight: 700; }
+    .nodeMeta {
+      fill: var(--muted);
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+    .graph-tooltip {
+      position: absolute;
+      display: none;
+      max-width: 240px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 4;
+    }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; min-width: 640px; }
+    th, td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: uppercase;
+      background: var(--panel);
+    }
+    th button {
+      color: inherit;
+      background: transparent;
+      padding: 0;
+      text-transform: inherit;
+    }
+    tr:last-child td { border-bottom: 0; }
+    code, .mono {
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .feed { display: grid; border-top: 1px solid var(--line); }
+    .feed-row {
+      display: grid;
+      grid-template-columns: 112px 1fr auto;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .feed-row:last-child { border-bottom: 0; }
+    .feed-time { color: var(--muted); font-size: 12px; font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .feed-title { font-size: 14px; font-weight: 700; }
+    .feed-detail { margin-top: 4px; color: var(--muted); font-size: 14px; }
+    .button-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      min-height: 32px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--line);
+    }
+    .btn:hover { border-color: var(--info); color: var(--info); }
+    .btn-primary { color: var(--bg); background: var(--safe); border-color: var(--safe); font-weight: 700; }
+    .btn-primary:hover { color: var(--bg); border-color: var(--safe); }
+    .btn-critical { color: var(--bg); background: var(--critical); border-color: var(--critical); font-weight: 700; }
+    .btn-text { border-color: transparent; color: var(--muted); }
+    .btn[disabled] { color: var(--muted); border-color: var(--line); cursor: not-allowed; }
+    .mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .mode-grid .btn.active { border-color: var(--info); color: var(--info); }
+    .ai-state {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+    .ai-face {
+      width: 72px;
+      height: 72px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 20px;
+      line-height: 1;
+    }
+    .ai-headline { margin: 0; font-size: 20px; line-height: 1.2; }
+    .ai-copy { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .log-list { display: grid; border-top: 1px solid var(--line); }
+    .log-line { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .empty-state { color: var(--muted); font-size: 14px; padding: 16px 0; }
+    .skeleton {
+      min-height: 16px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--muted);
+      padding: 8px;
+    }
+    .mobile-nav { display: none; }
+    @media (max-width: 980px) {
+      .topbar { align-items: flex-start; flex-direction: column; padding: 16px; }
+      .system-strip { justify-content: flex-start; }
+      .console-grid { grid-template-columns: 1fr; padding: 16px 16px 80px; }
+      .column { display: none; }
+      .column.active-mobile { display: grid; }
+      .mobile-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        border-top: 1px solid var(--line);
+        background: var(--line);
+        z-index: 10;
+      }
+      .mobile-nav button {
+        min-height: 56px;
+        color: var(--muted);
+        background: var(--bg);
+        font-size: 12px;
+      }
+      .mobile-nav button.active { color: var(--info); }
+      table { min-width: 560px; }
+      .feed-row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="app-shell">
     <header class="topbar">
-      <div>
-        <div class="brandMark"><span class="brandDot"></span><span id="liveText">Protectogotchi startet</span></div>
-        <h1>Dein Netzwerk, verständlich und lokal überwacht.</h1>
-        <p class="subtitle">Protectogotchi lernt normales Verhalten, erkennt Abweichungen und erklärt die Lage in klarer Sprache statt in Rohdaten.</p>
+      <div class="brand" aria-label="Protectogotchi">
+        <div class="brand-mark" aria-hidden="true">P</div>
+        <div>
+          <h1>Protectogotchi</h1>
+          <div class="brand-subtitle">Local defensive network AI</div>
+        </div>
       </div>
-      <div class="modeDock" aria-label="Modus"><button data-mode="learn" class="active" onclick="setMode('learn')">Lernen</button><button data-mode="watch" onclick="setMode('watch')">Beobachten</button><button data-mode="guard" onclick="setMode('guard')">Schützen</button><button data-mode="god" onclick="setMode('god')">Autopilot</button><button data-mode="pause" onclick="setMode('pause')">Pause</button></div>
+      <div class="system-strip" aria-label="Systemstatus">
+        <div class="system-item"><span class="system-label">Uptime</span><span class="system-value" id="uptime">--</span></div>
+        <div class="system-item"><span class="system-label">Modus</span><span class="system-value" id="headerMode">learn</span></div>
+        <div class="system-item"><span class="system-label">Last</span><span class="system-value" id="headerLoad">0%</span></div>
+        <div class="system-item"><span class="system-label">Netzwerkmodus</span><span class="system-value" id="networkMode">observer</span></div>
+      </div>
     </header>
-    <main class="dashboard">
-      <aside class="companion">
-        <section class="mascotPanel">
-          <div class="mascotHero"><div class="petBlob"><div class="face" id="face">( o_o)</div></div><div><p class="state" id="state">Status wird geladen.</p><div class="muted" id="mood">Die erste Einschätzung kommt gleich.</div></div></div>
-          <div class="thoughtCloud" aria-label="Statusnotiz"><span class="eyebrow">Statusnotiz</span><span id="thought">Ich prüfe die letzten Beobachtungen und fasse sie verständlich zusammen.</span></div>
+
+    <main class="console-grid" id="consoleGrid">
+      <section class="column active-mobile" data-mobile-panel="assets" aria-label="Asset Graph">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Asset Graph</h2>
+              <p class="panel-subtitle">Sichtbare Knoten, Gateways und Subnetze</p>
+            </div>
+            <span class="status-pill status-info" id="assetCoverage">loading</span>
+          </div>
+          <div class="panel-body">
+            <div class="asset-canvas" id="graphCanvas">
+              <svg id="networkGraph" role="img" aria-label="Asset Graph"></svg>
+              <div class="graph-tooltip" id="graphTooltip" role="status"></div>
+            </div>
+          </div>
         </section>
-        <section class="mascotPanel senseGrid" aria-label="Kurzstatus"><div class="sense"><span>Einschätzung</span><strong id="risk">-</strong></div><div class="sense"><span>Level</span><strong id="level">-</strong></div><div class="sense"><span>Baseline</span><strong id="baseline">-</strong></div><div class="sense"><span>Geräte</span><strong id="devicesCount">-</strong></div></section>
-      </aside>
-      <div class="work">
-        <nav class="tabs" aria-label="Ansichten"><button data-tab="home" class="active" onclick="switchTab('home')">Übersicht</button><button data-tab="now" onclick="switchTab('now')">Aktivität</button><button data-tab="worries" onclick="switchTab('worries')">Hinweise</button><button data-tab="neighbors" onclick="switchTab('neighbors')">Geräte</button><button data-tab="practice" onclick="switchTab('practice')">Simulation</button><button data-tab="help" onclick="switchTab('help')">Werkzeuge</button></nav>
-        <section class="panel active" data-panel="home"><div class="section"><h2 class="sectionTitle">Netzwerkübersicht</h2><p class="sectionLead">Die Karte zeigt die wichtigsten Beziehungen: dieses Gerät, Schnittstellen, Subnetze, Gateway und bekannte Geräte.</p><div class="mapWrap"><svg id="networkGraph" role="img" aria-label="Einfache Netzwerkkarte"></svg></div><div class="softStrip" id="plainSummary"></div></div><div class="section"><h2 class="sectionTitle">Lebendiger Status</h2><p class="sectionLead">Der Companion-Zustand wechselt mit der Lage: ruhig, aufmerksam, aufgeregt, lernend oder gelangweilt bei längerer Stille.</p><div id="watchfulness"></div></div></section>
-        <section class="panel" data-panel="now"><div class="section"><h2 class="sectionTitle">Aktuelle Aktivität</h2><p class="sectionLead">Eine verständliche Zusammenfassung der Bewegungen, ohne technische Rohdaten als Hauptansicht.</p><div id="activity" class="lineList">lädt...</div></div><div class="two"><div class="section"><h2 class="sectionTitle">Kurzbericht</h2><div id="networkDetail" class="lineList">lädt...</div></div><div class="section"><h2 class="sectionTitle">Sichtbarkeit</h2><div id="coverage" class="lineList">lädt...</div></div></div></section>
-        <section class="panel" data-panel="worries"><div class="section"><h2 class="sectionTitle">Hinweise & Empfehlungen</h2><p class="sectionLead">Auffälligkeiten werden priorisiert und als konkrete Handlungsempfehlung formuliert.</p><div id="findings" class="lineList">lädt...</div></div><div class="section"><h2 class="sectionTitle">Verlauf</h2><div id="history" class="lineList">lädt...</div></div></section>
-        <section class="panel" data-panel="neighbors"><div class="section"><h2 class="sectionTitle">Bekannte Geräte</h2><p class="sectionLead">Geräte werden mit Namen, Adresse und letzter Sichtung angezeigt.</p><table class="miniTable"><thead><tr><th>Name</th><th>Adresse</th><th>Gesehen</th><th>Zuletzt</th></tr></thead><tbody id="devices"></tbody></table></div></section>
-        <section class="panel" data-panel="practice"><div class="section"><h2 class="sectionTitle">Angriffssimulation</h2><p class="sectionLead">Isolierte Szenarien zeigen, wie Protectogotchi Bedrohungen erkennen würde, ohne echten Verkehr umzuleiten.</p><div class="softStrip" id="simulationButtons"></div><div id="simulation" class="lineList"><div class="story">Wähle ein Szenario aus.</div></div></div><div class="section"><h2 class="sectionTitle">Schutzreichweite</h2><div id="placement" class="lineList">lädt...</div></div></section>
-        <section class="panel" data-panel="help"><div class="two"><div class="section"><h2 class="sectionTitle">Werkzeuge</h2><div id="tools" class="lineList">lädt...</div></div><div class="section"><h2 class="sectionTitle">Wissensbasis</h2><div id="knowledge" class="lineList">lädt...</div></div></div></section>
-      </div>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Assets</h2>
+              <p class="panel-subtitle">Inventar aus lokaler Sicht</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="metric-grid">
+              <div class="metric"><div class="metric-label">Geräte</div><div class="metric-value" id="metricDevices">--</div></div>
+              <div class="metric"><div class="metric-label">Subnets</div><div class="metric-value" id="metricSubnets">--</div></div>
+              <div class="metric"><div class="metric-label">Gateway</div><div class="metric-value" id="metricGateways">--</div></div>
+              <div class="metric"><div class="metric-label">Routen</div><div class="metric-value" id="metricRoutes">--</div></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="column active-mobile" data-mobile-panel="matrix" aria-label="Realtime Feed und Bedrohungsmatrix">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Bedrohungsmatrix</h2>
+              <p class="panel-subtitle">Priorisierte Befunde mit Begründung und Empfehlung</p>
+            </div>
+            <span class="status-pill" id="matrixStatus">loading</span>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table aria-label="Bedrohungsmatrix">
+                <thead>
+                  <tr>
+                    <th><button type="button" onclick="sortThreats('severity')">Status</button></th>
+                    <th><button type="button" onclick="sortThreats('title')">Befund</button></th>
+                    <th>Empfehlung</th>
+                    <th><button type="button" onclick="sortThreats('time')">Zeit</button></th>
+                  </tr>
+                </thead>
+                <tbody id="threatRows"><tr><td colspan="4"><div class="skeleton">Warte auf ersten Scan</div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Realtime Feed</h2>
+              <p class="panel-subtitle">Letzte Beobachtungen und Statuswechsel</p>
+            </div>
+            <span class="status-pill status-info" id="feedCount">0 events</span>
+          </div>
+          <div class="panel-body">
+            <div class="feed" id="feedRows"><div class="empty-state">Noch keine Ereignisse im aktuellen Lauf.</div></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Geräte</h2>
+              <p class="panel-subtitle">Bekannte Geräte aus der Baseline</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table aria-label="Geräteliste">
+                <thead><tr><th>Name</th><th>IP</th><th>MAC</th><th>Zuletzt</th></tr></thead>
+                <tbody id="deviceRows"><tr><td colspan="4"><div class="skeleton">Inventar wird geladen</div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="column active-mobile" data-mobile-panel="control" aria-label="Steuerungskonsole">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Steuerung</h2>
+              <p class="panel-subtitle">Beobachtung und Aktion klar getrennt</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="mode-grid" aria-label="Modus wechseln">
+              <button class="btn" data-mode="learn" onclick="setMode('learn')">Lernen</button>
+              <button class="btn" data-mode="watch" onclick="setMode('watch')">Beobachten</button>
+              <button class="btn" data-mode="guard" onclick="setMode('guard')">Schützen</button>
+              <button class="btn btn-critical" data-mode="god" onclick="setMode('god')">Autopilot</button>
+              <button class="btn" data-mode="pause" onclick="setMode('pause')">Pause</button>
+              <button class="btn" onclick="refresh(true)">Scan jetzt</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">AI State</h2>
+              <p class="panel-subtitle">Sekundärer Companion-Status</p>
+            </div>
+            <span class="status-pill" id="aiStatusPill">loading</span>
+          </div>
+          <div class="panel-body">
+            <div class="ai-state">
+              <div class="ai-face" id="aiFace" aria-label="Companion face">( o_o)</div>
+              <div>
+                <h3 class="ai-headline" id="aiHeadline">Initialisierung</h3>
+                <p class="ai-copy" id="aiCopy">Der lokale Agent wartet auf den ersten Scan.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Export & Simulation</h2>
+              <p class="panel-subtitle">Daten sichern und Erkennung gefahrlos prüfen</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="button-row">
+              <button class="btn btn-primary" onclick="exportSnapshot()">Export JSON</button>
+              <button class="btn" onclick="runLabScenario('arp-spoof')">ARP-Simulation</button>
+              <button class="btn" onclick="runLabScenario('vlan-lateral-movement')">VLAN-Simulation</button>
+            </div>
+            <div class="log-list" id="simulationLog" aria-label="Simulationsergebnis"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Logs</h2>
+              <p class="panel-subtitle">Kompakte Betriebsnotizen</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="log-list" id="controlLogs"><div class="log-line">Warte auf Live-Daten.</div></div>
+          </div>
+        </section>
+      </section>
     </main>
+
+    <nav class="mobile-nav" aria-label="Mobile Navigation">
+      <button type="button" data-mobile-tab="assets" class="active" onclick="setMobilePanel('assets')">Assets</button>
+      <button type="button" data-mobile-tab="matrix" onclick="setMobilePanel('matrix')">Matrix</button>
+      <button type="button" data-mobile-tab="control" onclick="setMobilePanel('control')">Control</button>
+    </nav>
   </div>
   <script>
     const faces = { idle:"( -_-)", bored:"( -_-) z", learning:"( o_o)", analyzing:"( @_@)", alert:"( O_O)!", fighting:"( >_<)", happy:"( ^_^)", curious:"( •_•)?" };
-    const modeNames = { learn:"Lernen", watch:"Beobachten", guard:"Schützen", god:"Autopilot", pause:"Pause" };
-    async function getJson(path){ const r=await fetch(path); if(!r.ok) throw new Error(path+" -> "+r.status); return r.json(); }
-    function severityWord(s){ return ({info:"nur eine Notiz",low:"kleine Sorge",medium:"bitte anschauen",high:"wichtig",critical:"dringend"})[s] || s; }
-    function riskWord(score){ if(score>=70) return "unruhig"; if(score>=35) return "aufmerksam"; return "ruhig"; }
-    async function refresh(){
-      const live=await getJson('/api/live'); const scan=live.scan||{}; const state=live.state||{}; const snapshot=scan.snapshot||{}; const faceState=live.pet_state || scan.face_state || (state.baseline_ready?'happy':'learning');
-      document.getElementById('face').textContent=faces[faceState]||faces.idle; document.getElementById('state').textContent=live.pet_headline || modeNames[live.mode] || 'Ich passe auf'; document.getElementById('mood').textContent=live.pet_subtitle || live.mode_description || '';
-      document.getElementById('thought').textContent=live.thought || 'Ich prüfe die Lage und melde verständlich, wenn etwas Aufmerksamkeit braucht.'; renderMode(live.mode||'learn');
-      document.getElementById('risk').textContent=riskWord(scan.risk_score||0); document.getElementById('risk').className=(scan.risk_score||0)>=70?'risk-high':((scan.risk_score||0)>=35?'risk-mid':'risk-low'); document.getElementById('level').textContent=state.level??'-'; document.getElementById('baseline').textContent=state.baseline_ready?'bereit':((state.learning_remaining||0)+' Scans'); document.getElementById('devicesCount').textContent=state.known_devices??'-'; document.getElementById('liveText').textContent='aktualisiert: '+(live.updated_at||'gerade');
-      renderPlainSummary(live, snapshot); renderWatchfulness(live); renderActivity(live, snapshot); renderGraph((live.network_map||{}).graph||{nodes:[],edges:[]}); renderFindings(scan.findings||[]); renderHistory(live.finding_history||[]); renderDevices(live.devices||[]); renderPlacement(live.placement_report||{}); renderSimulationButtons(live.simulations||[]); renderNetworkStory(live, snapshot); renderCoverage(live); renderTools(live.tools||[]); renderKnowledge(live.knowledge||[]);
+    const severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
+    let currentLive = null;
+    let threatSort = { key: "time", direction: "desc" };
+    let activeMobilePanel = "assets";
+    let touchStartX = 0;
+
+    async function getJson(path) {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(path + " -> " + response.status);
+      return response.json();
     }
-    function renderPlainSummary(live,s){ const items=[['WLAN', (s.wifi||{}).ssid || 'nicht erkannt'], ['Gateway', s.default_gateway || 'noch unbekannt'], ['Modus', modeNames[live.mode] || live.mode], ['Verbindungen', (s.connections||[]).length+' aktuell'], ['Geräte', (s.devices||[]).length+' gesehen']]; document.getElementById('plainSummary').innerHTML=items.map(i=>`<span class="tag"><strong>${i[0]}:</strong> ${escapeHtml(i[1])}</span>`).join(''); }
-    function renderWatchfulness(live){ const quiet=live.quiet_scans||0; const pct=Math.min(100, quiet*25); const text=quiet>=2?'Längere Stille erkannt: Status gelangweilt, Prüfintervall erhöht.':'Normale Wachsamkeit: der Status bleibt ruhig und prüft regelmäßig.'; document.getElementById('watchfulness').innerHTML=`<div class="story"><strong>${escapeHtml(text)}</strong><span class="muted">Ruhige Scans hintereinander: ${quiet}. Der Companion bleibt dadurch sichtbar lebendig, ohne unnötig Alarm zu machen.</span><div class="quietbar"><span style="width:${pct}%"></span></div></div>`; }
-    function renderActivity(live,s){ const findings=(live.scan||{}).findings||[]; const lines=[]; lines.push(`<div class="story"><strong>${findings.length?'Auffälligkeit erkannt':'Keine akute Auffälligkeit'}</strong><span class="muted">${escapeHtml(live.activity_summary||'Die aktuelle Aktivität wirkt normal.')}</span></div>`); (s.connections||[]).slice(0,8).forEach(c=>lines.push(`<div class="story"><strong>${escapeHtml(c.protocol||'Verbindung')} Verbindung</strong><span class="muted">Von ${escapeHtml(c.local_address||'diesem Gerät')} zu ${escapeHtml(c.remote_address||'intern oder extern')}. Status: ${escapeHtml(c.state||'unbekannt')}.</span></div>`)); document.getElementById('activity').innerHTML=lines.join(''); }
-    function renderNetworkStory(live,s){ const summary=(live.network_map||{}).summary||{}; const rows=[['Gateway', s.default_gateway || 'noch nicht erkannt'], ['Erkannte Bereiche', Object.entries(summary).map(([k,v])=>`${v}× ${k}`).join(', ') || 'noch keine Karte'], ['Aktuelle Aktivität', (s.connections||[]).length ? `${s.connections.length} Verbindung(en) sichtbar` : 'gerade keine auffällige Aktivität']]; document.getElementById('networkDetail').innerHTML=rows.map(r=>`<div class="story"><strong>${r[0]}</strong><span class="muted">${escapeHtml(r[1])}</span></div>`).join(''); }
-    function renderCoverage(live){ const coverage=((live.network_map||{}).coverage||[]); document.getElementById('coverage').innerHTML=(coverage.length?coverage:['Noch keine Abdeckung bekannt. Ich lerne erst, wo ich gut hinschauen kann.']).map(line=>`<div class="story"><span class="muted">${escapeHtml(line)}</span></div>`).join(''); }
-    function renderFindings(findings){ const t=document.getElementById('findings'); if(!findings.length){t.innerHTML="<div class='story'><strong>Keine Hinweise.</strong><span class='muted'>Aktuell gibt es nichts, das Aufmerksamkeit braucht.</span></div>"; return;} t.innerHTML=findings.map(f=>`<div class="story"><strong class="severity-${f.severity}">${severityWord(f.severity)}: ${escapeHtml(f.title)}</strong><span>${escapeHtml(f.description)}</span><div class="tinyDetail">Empfehlung: ${escapeHtml(f.recommended_action||'erstmal beobachten')}</div></div>`).join(''); }
-    function renderHistory(history){ const t=document.getElementById('history'); if(!history.length){t.innerHTML="<div class='story'><span class='muted'>Noch kein Verlauf vorhanden.</span></div>"; return;} t.innerHTML=history.slice(-10).reverse().map(f=>`<div class="story"><strong class="severity-${f.severity}">${escapeHtml(f.title)}</strong><span class="muted">${escapeHtml(f.seen_at)} · ${severityWord(f.severity)}</span></div>`).join(''); }
-    function renderDevices(devices){ document.getElementById('devices').innerHTML=devices.map(d=>`<tr><td>${escapeHtml(d.hostname||'Unbenanntes Gerät')}<br><code>${escapeHtml(d.mac)}</code></td><td>${escapeHtml((d.ips||[]).join(', ')||'-')}</td><td>${d.seen_count||0}×</td><td>${escapeHtml(d.last_seen||'-')}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Noch keine Geräte gelernt.</td></tr>'; }
-    function renderPlacement(r){ const items=[['Kurzfassung', r.summary||'noch unbekannt'], ['Schutz aktiv', r.active_response_enabled?'ja':'noch nicht'], ['Automatisierung', r.firewall_controller_automation?'ja':'nein']]; const steps=(r.next_steps||[]).map(s=>`<div class="story"><strong>Nächster Schritt</strong><span class="muted">${escapeHtml(s)}</span></div>`).join(''); document.getElementById('placement').innerHTML=items.map(i=>`<div class="story"><strong>${i[0]}</strong><span class="muted">${escapeHtml(i[1])}</span></div>`).join('')+steps; }
-    function renderSimulationButtons(s){ document.getElementById('simulationButtons').innerHTML=s.map(n=>`<button class="pillButton" onclick="runLabScenario('${escapeHtml(n)}')">${escapeHtml(n)}</button>`).join(''); }
-    async function runLabScenario(scenario){ const r=await getJson('/api/simulate?scenario='+encodeURIComponent(scenario)); document.getElementById('simulation').innerHTML=`<div class="story"><strong>${escapeHtml(r.scenario)}</strong><span class="muted">Einschätzung im Szenario: ${riskWord(r.risk_score||0)}.</span></div>`+((r.lessons||[]).map(l=>`<div class="story"><span class="muted">${escapeHtml(l)}</span></div>`).join('')); }
-    function renderTools(tools){ document.getElementById('tools').innerHTML=tools.map(t=>`<div class="story"><strong>${escapeHtml(t.name)}</strong><span class="muted">${escapeHtml(t.status)}. ${escapeHtml(t.summary||'Werkzeug verfügbar.')}</span></div>`).join('') || '<div class="story"><span class="muted">Keine Werkzeuge gemeldet.</span></div>'; }
-    function renderKnowledge(topics){ document.getElementById('knowledge').innerHTML=topics.map(t=>`<div class="story"><strong>${escapeHtml(t.name)}</strong><span class="muted">Bereich: ${escapeHtml(t.domain)}. ${escapeHtml(t.summary||'Erklärung verfügbar.')}</span></div>`).join('') || '<div class="story"><span class="muted">Noch kein Wissen geladen.</span></div>'; }
-    function renderGraph(graph){ const svg=document.getElementById('networkGraph'), nodes=graph.nodes||[], edges=graph.edges||[], width=Math.max(760,svg.clientWidth||760), columns={host:90,interface:250,subnet:430,gateway:630,'default-gateway':630,endpoint:630,'local-host':630,'infrastructure-candidate':630}, grouped={}; nodes.forEach(n=>{const k=n.kind||'endpoint'; (grouped[k]=grouped[k]||[]).push(n);}); const pos={}; ['host','interface','subnet','default-gateway','gateway','infrastructure-candidate','endpoint','local-host'].forEach(k=>(grouped[k]||[]).forEach((n,i)=>pos[n.id]={x:columns[k]||630,y:65+i*70})); const height=Math.max(390,...Object.values(pos).map(p=>p.y+55)); svg.setAttribute('viewBox',`0 0 ${width} ${height}`); svg.innerHTML=edges.map(e=>pos[e.source]&&pos[e.target]?`<line class="link" x1="${pos[e.source].x+62}" y1="${pos[e.source].y}" x2="${pos[e.target].x-62}" y2="${pos[e.target].y}"></line>`:'').join('')+nodes.map(n=>{const p=pos[n.id]; if(!p)return''; return `<g><rect class="node ${n.kind||'endpoint'}" x="${p.x-62}" y="${p.y-24}" width="124" height="48"></rect><text class="nodeLabel" x="${p.x-52}" y="${p.y-4}">${escapeHtml(n.label||n.id)}</text><text class="nodeMeta" x="${p.x-52}" y="${p.y+13}">${escapeHtml([n.ip,n.mac].filter(Boolean).join(' · '))}</text></g>`}).join(''); }
-    function escapeHtml(v){ return String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
-    function switchTab(tab){ document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab)); document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('active',p.dataset.panel===tab)); }
-    function renderMode(mode){ document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); }
-    async function setMode(mode){ let body={mode}; if(mode==='god'){ const phrase=window.prompt('Autopilot handelt selbstständiger. Netzwerkweiter Schutz braucht einen echten Enforcement-Punkt. Es wird kein heimliches ARP/MitM aktiviert. Tippe ACTIVATE GOD MODE.'); if(phrase!=='ACTIVATE GOD MODE') return; body.confirm=phrase; } await fetch('/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); await refresh(); }
-    refresh().catch(e=>document.getElementById('liveText').textContent=String(e)); setInterval(()=>refresh().catch(e=>document.getElementById('liveText').textContent=String(e)),1500);
+
+    async function refresh(manual = false) {
+      const live = manual ? await getJson("/api/scan?learn=1") : await getJson("/api/live");
+      currentLive = live;
+      renderHeader(live);
+      renderControls(live);
+      renderAiState(live);
+      renderAssets(live);
+      renderThreatMatrix(live);
+      renderFeed(live);
+      renderDevices(live.devices || []);
+      renderLogs(live);
+    }
+
+    function renderHeader(live) {
+      const runtime = live.runtime || {};
+      const scan = live.scan || {};
+      const systemLoad = Number.isFinite(runtime.load_percent) ? runtime.load_percent : (scan.risk_score || 0);
+      document.getElementById("uptime").textContent = formatDuration(runtime.uptime_seconds || 0);
+      document.getElementById("headerMode").textContent = live.mode || "learn";
+      document.getElementById("headerLoad").textContent = String(systemLoad) + "%";
+      document.getElementById("networkMode").textContent = runtime.network_mode || "observer";
+    }
+
+    function renderControls(live) {
+      document.querySelectorAll("[data-mode]").forEach(button => {
+        button.classList.toggle("active", button.dataset.mode === live.mode);
+        button.setAttribute("aria-pressed", String(button.dataset.mode === live.mode));
+      });
+    }
+
+    function renderAiState(live) {
+      const scan = live.scan || {};
+      const faceState = live.pet_state || scan.face_state || "idle";
+      const risk = scan.risk_score || 0;
+      document.getElementById("aiFace").textContent = faces[faceState] || faces.idle;
+      document.getElementById("aiHeadline").textContent = live.pet_headline || "Initialisierung";
+      document.getElementById("aiCopy").textContent = live.thought || "Warte auf Live-Daten.";
+      setPill(document.getElementById("aiStatusPill"), riskStatus(risk), riskLabel(risk));
+    }
+
+    function renderAssets(live) {
+      const networkMap = live.network_map || {};
+      const summary = networkMap.summary || {};
+      document.getElementById("metricDevices").textContent = summary.devices ?? 0;
+      document.getElementById("metricSubnets").textContent = summary.local_subnets ?? 0;
+      document.getElementById("metricGateways").textContent = summary.gateways ?? 0;
+      document.getElementById("metricRoutes").textContent = summary.routed_networks ?? 0;
+      setPill(document.getElementById("assetCoverage"), "info", (summary.active_interfaces || 0) + " active ifaces");
+      renderGraph(networkMap.graph || { nodes: [], edges: [] });
+    }
+
+    function renderThreatMatrix(live) {
+      const findings = ((live.scan || {}).findings || []).map((finding, index) => ({
+        ...finding,
+        time: live.updated_at || "",
+        index
+      }));
+      setPill(document.getElementById("matrixStatus"), findings.length ? riskStatus((live.scan || {}).risk_score || 0) : "safe", findings.length ? findings.length + " findings" : "clear");
+      const sorted = findings.sort(compareThreats);
+      const target = document.getElementById("threatRows");
+      if (!sorted.length) {
+        target.innerHTML = "<tr><td colspan='4'><div class='empty-state'>Keine aktiven Befunde im letzten Scan.</div></td></tr>";
+        return;
+      }
+      target.innerHTML = sorted.map(finding => `
+        <tr>
+          <td>${pillHtml(finding.severity, severityLabel(finding.severity))}</td>
+          <td><strong>${escapeHtml(finding.title)}</strong><div class="mono">${escapeHtml(finding.code)}</div></td>
+          <td>${escapeHtml(finding.recommended_action || "Beobachten")}</td>
+          <td class="mono">${escapeHtml(shortTime(finding.time))}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderFeed(live) {
+      const findings = ((live.scan || {}).findings || []).slice(0, 6);
+      const rows = [];
+      rows.push({
+        time: live.updated_at,
+        title: "Scan abgeschlossen",
+        detail: live.activity_summary || "Live-Daten aktualisiert.",
+        severity: riskStatus((live.scan || {}).risk_score || 0)
+      });
+      for (const finding of findings) {
+        rows.push({
+          time: live.updated_at,
+          title: finding.title,
+          detail: finding.description,
+          severity: finding.severity
+        });
+      }
+      document.getElementById("feedCount").textContent = rows.length + " events";
+      document.getElementById("feedRows").innerHTML = rows.map(row => `
+        <div class="feed-row">
+          <div class="feed-time">${escapeHtml(shortTime(row.time))}</div>
+          <div><div class="feed-title">${escapeHtml(row.title)}</div><div class="feed-detail">${escapeHtml(row.detail)}</div></div>
+          <div>${pillHtml(row.severity, severityLabel(row.severity))}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderDevices(devices) {
+      const target = document.getElementById("deviceRows");
+      if (!devices.length) {
+        target.innerHTML = "<tr><td colspan='4'><div class='empty-state'>Noch keine Geräte in der Baseline.</div></td></tr>";
+        return;
+      }
+      target.innerHTML = devices.map(device => `
+        <tr>
+          <td>${escapeHtml(device.hostname || "Unbenannt")}</td>
+          <td class="mono">${escapeHtml((device.ips || []).join(", ") || "-")}</td>
+          <td class="mono">${escapeHtml(device.mac || "-")}</td>
+          <td class="mono">${escapeHtml(shortTime(device.last_seen || "-"))}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderLogs(live) {
+      const state = live.state || {};
+      const readiness = live.god_mode_readiness || {};
+      const lines = [
+        "mode=" + (live.mode || "learn"),
+        "baseline=" + (state.baseline_ready ? "ready" : "learning"),
+        "network_prevention=" + (readiness.can_prevent_network_wide ? "available" : "not-available"),
+        "quiet_scans=" + (live.quiet_scans || 0),
+      ];
+      document.getElementById("controlLogs").innerHTML = lines.map(line => `<div class="log-line mono">${escapeHtml(line)}</div>`).join("");
+    }
+
+    function renderGraph(graph) {
+      const svg = document.getElementById("networkGraph");
+      const nodes = graph.nodes || [];
+      const edges = graph.edges || [];
+      const width = Math.max(360, svg.clientWidth || 360);
+      const columns = { host: 72, interface: 184, subnet: 296, gateway: 408, "default-gateway": 408, endpoint: 408, "local-host": 408, "infrastructure-candidate": 408 };
+      const grouped = {};
+      for (const node of nodes) {
+        const kind = node.kind || "endpoint";
+        (grouped[kind] = grouped[kind] || []).push(node);
+      }
+      const positions = {};
+      ["host", "interface", "subnet", "default-gateway", "gateway", "infrastructure-candidate", "endpoint", "local-host"].forEach(kind => {
+        (grouped[kind] || []).forEach((node, index) => {
+          positions[node.id] = { x: columns[kind] || 408, y: 48 + index * 64 };
+        });
+      });
+      const height = Math.max(360, ...Object.values(positions).map(point => point.y + 56));
+      svg.setAttribute("viewBox", `0 0 ${Math.max(width, 480)} ${height}`);
+      const edgeSvg = edges.map(edge => {
+        const source = positions[edge.source];
+        const target = positions[edge.target];
+        if (!source || !target) return "";
+        return `<line class="link" x1="${source.x + 48}" y1="${source.y}" x2="${target.x - 48}" y2="${target.y}"></line>`;
+      }).join("");
+      const nodeSvg = nodes.map(node => {
+        const point = positions[node.id];
+        if (!point) return "";
+        const meta = [node.ip, node.mac].filter(Boolean).join(" ");
+        const label = node.label || node.id;
+        const tooltip = [label, node.kind, meta].filter(Boolean).join(" | ");
+        return `
+          <g tabindex="0" data-tooltip="${escapeHtml(tooltip)}" onmousemove="showGraphTooltip(event)" onmouseleave="hideGraphTooltip()" onfocus="showGraphTooltip(event)" onblur="hideGraphTooltip()">
+            <title>${escapeHtml(tooltip)}</title>
+            <rect class="node ${escapeHtml(node.kind || "endpoint")}" x="${point.x - 48}" y="${point.y - 24}" width="96" height="48"></rect>
+            <text class="nodeLabel" x="${point.x - 40}" y="${point.y - 4}">${escapeHtml(truncate(label, 14))}</text>
+            <text class="nodeMeta" x="${point.x - 40}" y="${point.y + 12}">${escapeHtml(truncate(meta, 16))}</text>
+          </g>
+        `;
+      }).join("");
+      svg.innerHTML = edgeSvg + nodeSvg;
+    }
+
+    function showGraphTooltip(event) {
+      const tooltip = document.getElementById("graphTooltip");
+      const target = event.currentTarget;
+      const bounds = document.getElementById("graphCanvas").getBoundingClientRect();
+      const pointerX = Number.isFinite(event.offsetX) ? event.offsetX : Math.max(16, bounds.width - 256);
+      const pointerY = Number.isFinite(event.offsetY) ? event.offsetY : 16;
+      tooltip.textContent = target.dataset.tooltip || "";
+      tooltip.style.display = "block";
+      tooltip.style.left = Math.min(pointerX + 16, Math.max(16, bounds.width - 256)) + "px";
+      tooltip.style.top = Math.max(pointerY + 16, 8) + "px";
+    }
+
+    function hideGraphTooltip() {
+      document.getElementById("graphTooltip").style.display = "none";
+    }
+
+    function sortThreats(key) {
+      if (threatSort.key === key) {
+        threatSort.direction = threatSort.direction === "asc" ? "desc" : "asc";
+      } else {
+        threatSort = { key, direction: key === "title" ? "asc" : "desc" };
+      }
+      if (currentLive) renderThreatMatrix(currentLive);
+    }
+
+    function compareThreats(a, b) {
+      const direction = threatSort.direction === "asc" ? 1 : -1;
+      if (threatSort.key === "severity") return ((severityRank[a.severity] || 0) - (severityRank[b.severity] || 0)) * direction;
+      if (threatSort.key === "title") return a.title.localeCompare(b.title) * direction;
+      return (String(a.time).localeCompare(String(b.time)) || (a.index - b.index)) * direction;
+    }
+
+    async function setMode(mode) {
+      const body = { mode };
+      if (mode === "god") {
+        const phrase = window.prompt("Autopilot fuehrt vorbereitete Schutzaktionen autonom aus. Netzwerkweiter Schutz braucht einen echten Enforcement-Punkt. Kein heimliches ARP/MitM. Tippe ACTIVATE GOD MODE.");
+        if (phrase !== "ACTIVATE GOD MODE") return;
+        body.confirm = phrase;
+      }
+      await fetch("/api/mode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      await refresh();
+    }
+
+    async function runLabScenario(scenario) {
+      const result = await getJson("/api/simulate?scenario=" + encodeURIComponent(scenario));
+      const lines = [
+        "scenario=" + result.scenario,
+        "isolated=" + String(result.isolated),
+        "risk=" + String(result.risk_score),
+        ...(result.lessons || []).slice(0, 3),
+      ];
+      document.getElementById("simulationLog").innerHTML = lines.map(line => `<div class="log-line">${escapeHtml(line)}</div>`).join("");
+    }
+
+    function exportSnapshot() {
+      if (!currentLive) return;
+      const blob = new Blob([JSON.stringify(currentLive, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "protectogotchi-snapshot.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function setMobilePanel(panel) {
+      activeMobilePanel = panel;
+      document.querySelectorAll("[data-mobile-panel]").forEach(column => column.classList.toggle("active-mobile", column.dataset.mobilePanel === panel));
+      document.querySelectorAll("[data-mobile-tab]").forEach(button => button.classList.toggle("active", button.dataset.mobileTab === panel));
+    }
+
+    document.getElementById("consoleGrid").addEventListener("touchstart", event => { touchStartX = event.changedTouches[0].clientX; }, { passive: true });
+    document.getElementById("consoleGrid").addEventListener("touchend", event => {
+      const delta = event.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(delta) < 48) return;
+      const panels = ["assets", "matrix", "control"];
+      const current = panels.indexOf(activeMobilePanel);
+      const next = delta < 0 ? Math.min(current + 1, panels.length - 1) : Math.max(current - 1, 0);
+      setMobilePanel(panels[next]);
+    }, { passive: true });
+
+    function setPill(element, status, label) {
+      element.className = "status-pill status-" + status;
+      element.textContent = label;
+    }
+    function pillHtml(status, label) { return `<span class="status-pill status-${statusClass(status)}">${escapeHtml(label)}</span>`; }
+    function statusClass(status) {
+      if (status === "critical" || status === "high") return "critical";
+      if (status === "medium" || status === "low" || status === "attention") return "attention";
+      if (status === "safe") return "safe";
+      return "info";
+    }
+    function riskStatus(score) { return score >= 70 ? "critical" : (score >= 35 ? "attention" : "safe"); }
+    function riskLabel(score) { return score >= 70 ? "kritisch" : (score >= 35 ? "aufmerksam" : "sicher"); }
+    function severityLabel(severity) {
+      return ({ critical: "kritisch", high: "hoch", medium: "mittel", low: "niedrig", info: "info", safe: "sicher", attention: "aufmerksam" })[severity] || severity;
+    }
+    function formatDuration(seconds) {
+      const value = Math.max(0, Math.floor(seconds));
+      const hours = Math.floor(value / 3600);
+      const minutes = Math.floor((value % 3600) / 60);
+      const secs = value % 60;
+      if (hours) return `${hours}h ${minutes}m`;
+      if (minutes) return `${minutes}m ${secs}s`;
+      return `${secs}s`;
+    }
+    function shortTime(value) {
+      if (!value || value === "-") return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).slice(0, 19);
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+    function truncate(value, length) {
+      const text = String(value || "");
+      return text.length > length ? text.slice(0, length - 1) + "…" : text;
+    }
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    setMobilePanel("assets");
+    refresh().catch(error => { document.getElementById("feedRows").innerHTML = `<div class="empty-state">${escapeHtml(String(error))}</div>`; });
+    setInterval(() => refresh().catch(() => {}), 1500);
   </script>
 </body>
 </html>
@@ -226,6 +873,7 @@ class LiveWebState:
         self.payload: dict | None = None
         self.mode = "learn"
         self.quiet_scans = 0
+        self.started_monotonic = time.monotonic()
 
     def start(self) -> None:
         self.thread.start()
@@ -242,6 +890,7 @@ class LiveWebState:
                     "error": "waiting for first scan",
                     "mode": self.mode,
                     "mode_description": WEB_MODES[self.mode]["description"],
+                    "runtime": _runtime_summary(self.config, self.mode, self.started_monotonic),
                     "state": _state_summary(self.config),
                     "scan": None,
                     "topology_summary": {},
@@ -267,6 +916,11 @@ class LiveWebState:
             if self.payload is not None:
                 self.payload["mode"] = mode
                 self.payload["mode_description"] = WEB_MODES[mode]["description"]
+                self.payload["runtime"] = _runtime_summary(
+                    self.config,
+                    mode,
+                    self.started_monotonic,
+                )
                 return self.payload
         return self.current()
 
@@ -285,13 +939,21 @@ class LiveWebState:
                 self.quiet_scans += 1
             else:
                 self.quiet_scans = 0
-            payload = _live_payload(self.config, result, topology, mode, quiet_scans=self.quiet_scans)
+            payload = _live_payload(
+                self.config,
+                result,
+                topology,
+                mode,
+                quiet_scans=self.quiet_scans,
+                runtime=_runtime_summary(self.config, mode, self.started_monotonic),
+            )
         except Exception as exc:  # pragma: no cover - defensive runtime guard
             payload = {
                 "updated_at": utc_now(),
                 "error": str(exc),
                 "mode": mode,
                 "mode_description": WEB_MODES[mode]["description"],
+                "runtime": _runtime_summary(self.config, mode, self.started_monotonic),
                 "state": _state_summary(self.config),
                 "scan": None,
                 "topology_summary": {},
@@ -332,6 +994,7 @@ def _live_payload(
     topology: NetworkTopology,
     mode: str = "learn",
     quiet_scans: int = 0,
+    runtime: dict | None = None,
 ) -> dict:
     state = StateStore(config.state_dir).load()
     network_map = NetworkMapper().build(result.snapshot)
@@ -347,6 +1010,7 @@ def _live_payload(
         "quiet_scans": quiet_scans,
         "mode": mode,
         "mode_description": WEB_MODES[mode]["description"],
+        "runtime": runtime or _runtime_summary(config, mode, time.monotonic()),
         "state": _state_summary(config),
         "scan": result.to_dict(),
         "topology_summary": topology.summary,
@@ -433,6 +1097,25 @@ def _pet_narration(
     ]
     return pet_state, headline, subtitle, thought, activity, calm_status
 
+
+def _runtime_summary(
+    config: ProtectogotchiConfig,
+    mode: str,
+    started_monotonic: float,
+) -> dict[str, object]:
+    try:
+        load_percent = min(100, round((os.getloadavg()[0] / max(1, os.cpu_count() or 1)) * 100))
+    except (AttributeError, OSError):
+        load_percent = 0
+    return {
+        "uptime_seconds": max(0, int(time.monotonic() - started_monotonic)),
+        "mode": mode,
+        "network_mode": config.deployment_mode,
+        "response_mode": config.response_mode,
+        "load_percent": load_percent,
+    }
+
+
 def _state_summary(config: ProtectogotchiConfig) -> dict:
     state = StateStore(config.state_dir).load()
     learning_remaining = max(0, config.min_baseline_observations - state.observations)
@@ -461,9 +1144,9 @@ def run_web(
         collector_name=collector_name,
         scan_interval=scan_interval or min(config.sample_interval, 3.0),
     )
-    live_state.start()
     handler = _handler(config, collector_name, live_state)
     server = ThreadingHTTPServer((host, port), handler)
+    live_state.start()
     print(f"Protectogotchi web listening on http://{host}:{port}")
     try:
         server.serve_forever()
