@@ -20,11 +20,13 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "tools" in html
     assert "Protectogotchi" in html
     assert "border-radius" in html
-    assert "Gedankenblase" in html
+    assert "Einordnung" in html
     assert "thought" in html
-    assert "Was gerade im Netzwerk los ist" in html
-    assert "Keine Fachsprache, keine JSON-Wände" in html
+    assert "Live-Aktivität" in html
+    assert "ohne Rohdatenwände" in html
     assert "renderNetworkStory" in html
+    assert "petBlob" not in html
+    assert "Haustier" not in html
     assert "JSON.stringify((live" not in html
 
 

@@ -56,158 +56,137 @@ def dashboard_html() -> str:
     :root {
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --bg: #fffaf7;
-      --paper: rgba(255,255,255,.76);
-      --paper-solid: #fff;
-      --ink: #2e2530;
-      --soft-ink: #766878;
-      --line: rgba(224, 194, 207, .72);
-      --rose: #ffe0eb;
-      --peach: #ffe9d6;
-      --mint: #ddf8ea;
-      --sky: #e6f2ff;
-      --lavender: #efe8ff;
-      --good: #12806b;
-      --wait: #aa6a10;
-      --bad: #be3455;
-      --glow: 0 26px 80px rgba(120, 72, 99, .13);
-      --small-shadow: 0 8px 26px rgba(120, 72, 99, .08);
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --ink: #111827;
+      --muted: #5f6b7a;
+      --faint: #8a95a3;
+      --line: #dfe4ea;
+      --line-strong: #c8d0da;
+      --accent: #2563eb;
+      --good: #087f5b;
+      --warn: #b7791f;
+      --bad: #b4233b;
+      --row: #f2f5f8;
+      --focus: 0 0 0 3px rgba(37, 99, 235, .18);
     }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--ink);
-      background:
-        radial-gradient(circle at 8% 8%, rgba(255, 199, 224, .8) 0 11rem, transparent 22rem),
-        radial-gradient(circle at 92% 2%, rgba(191, 244, 224, .75) 0 10rem, transparent 23rem),
-        radial-gradient(circle at 72% 88%, rgba(218, 232, 255, .85) 0 13rem, transparent 24rem),
-        linear-gradient(135deg, #fffaf7 0%, #fff1f7 47%, #f7fbff 100%);
-    }
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      opacity: .38;
-      background-image: radial-gradient(circle, rgba(143,96,124,.16) 1px, transparent 1px);
-      background-size: 28px 28px;
-      mask-image: linear-gradient(to bottom, #000, transparent 72%);
-    }
-    button { appearance: none; border: 0; font: inherit; cursor: pointer; }
-    .app { width: min(1460px, 100%); margin: 0 auto; padding: 28px clamp(16px, 4vw, 44px) 42px; }
-    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; margin-bottom: 24px; }
-    .brandMark { display: inline-flex; align-items: center; gap: 10px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.62); color: var(--soft-ink); box-shadow: var(--small-shadow); }
-    .brandDot { width: 10px; height: 10px; border-radius: 99px; background: var(--good); box-shadow: 0 0 0 7px rgba(18,128,107,.12); }
-    h1 { margin: 12px 0 8px; font-size: clamp(36px, 7vw, 82px); line-height: .92; letter-spacing: -.075em; max-width: 920px; }
-    .subtitle { margin: 0; max-width: 760px; color: var(--soft-ink); font-size: clamp(17px, 2.2vw, 22px); line-height: 1.45; }
-    .modeDock { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; max-width: 520px; }
-    .modeDock button, .tabs button, .pillButton { border-radius: 999px; padding: 10px 14px; color: var(--ink); background: rgba(255,255,255,.68); border: 1px solid var(--line); box-shadow: var(--small-shadow); }
-    .modeDock button.active, .tabs button.active { color: #fff; background: #302735; border-color: #302735; }
-    .dashboard { display: grid; grid-template-columns: minmax(300px, 410px) minmax(0, 1fr); gap: 22px; align-items: start; }
-    .companion { position: sticky; top: 18px; display: grid; gap: 18px; }
-    .mascotPanel, .section, .tabs { background: var(--paper); border: 1px solid var(--line); border-radius: 34px; box-shadow: var(--glow); backdrop-filter: blur(18px); }
-    .mascotPanel { padding: 24px; overflow: hidden; }
-    .mascotHero { display: grid; grid-template-columns: 132px 1fr; gap: 18px; align-items: center; }
-    .petBlob { width: 132px; aspect-ratio: 1; border-radius: 45% 55% 52% 48%; display: grid; place-items: center; background: linear-gradient(145deg, #fff, #ffe4ef 48%, #e6fff3); border: 1px solid #ffd3e2; box-shadow: inset 0 -16px 25px rgba(215,99,139,.09), 0 18px 34px rgba(144,74,109,.12); }
-    .face { font: 900 36px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; transform: rotate(-2deg); }
-    .state { margin: 0 0 6px; font-size: 30px; font-weight: 850; letter-spacing: -.055em; }
-    .muted { color: var(--soft-ink); }
-    .thoughtCloud { position: relative; margin-top: 22px; padding: 18px 18px 18px 20px; border-radius: 28px 28px 28px 10px; background: var(--paper-solid); border: 1px solid var(--line); line-height: 1.5; }
-    .thoughtCloud::after { content: ""; position: absolute; left: 30px; bottom: -10px; width: 20px; height: 20px; background: var(--paper-solid); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
-    .eyebrow { display: block; margin-bottom: 5px; color: var(--soft-ink); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-    .senseGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
-    .sense { padding: 14px; border-radius: 24px; background: rgba(255,255,255,.58); border: 1px solid var(--line); }
-    .sense span { display:block; font-size: 12px; color: var(--soft-ink); }
-    .sense strong { display:block; margin-top: 3px; font-size: 25px; letter-spacing: -.05em; }
-    .risk-low { color: var(--good); } .risk-mid { color: var(--wait); } .risk-high { color: var(--bad); }
-    .tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; padding: 11px; margin-bottom: 18px; }
-    .panel { display: none; } .panel.active { display: grid; gap: 18px; }
-    .section { padding: clamp(20px, 3vw, 30px); overflow: hidden; }
-    .sectionTitle { margin: 0 0 8px; font-size: clamp(24px, 3vw, 38px); letter-spacing: -.055em; }
-    .sectionLead { margin: 0 0 22px; color: var(--soft-ink); line-height: 1.55; max-width: 850px; }
-    .two { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
-    .lineList { display: grid; gap: 0; }
-    .story { padding: 15px 0; border-top: 1px solid var(--line); line-height: 1.5; }
-    .story:first-child { border-top: 0; padding-top: 0; }
-    .story strong { display:block; margin-bottom: 4px; }
-    .softStrip { display:flex; flex-wrap:wrap; gap:10px; margin: 14px 0 0; }
-    .tag { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:8px 12px; background:rgba(255,255,255,.65); border:1px solid var(--line); color:var(--soft-ink); }
-    .quietbar { height: 13px; border-radius: 999px; overflow:hidden; background:#f7dbe5; margin-top: 12px; }
-    .quietbar > span { display:block; height:100%; background:linear-gradient(90deg,#8ee6c6,#ffd6e5,#cfe0ff); }
-    .mapWrap { border-radius: 32px; padding: 14px; background: rgba(255,255,255,.5); border:1px solid var(--line); }
-    svg { width: 100%; min-height: 390px; border-radius: 24px; background: linear-gradient(180deg, #fff, #fff7fb); }
-    .nodeLabel { font: 13px ui-sans-serif, system-ui; fill: var(--ink); font-weight: 800; }
-    .nodeMeta { font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--soft-ink); }
-    .link { stroke: #e2b8c6; stroke-width: 2; stroke-linecap: round; }
-    .node { fill: #ffffff; stroke: #efc8d5; stroke-width: 1.5; rx: 18; ry: 18; }
-    .node.gateway, .node.default-gateway { stroke: var(--good); stroke-width: 2.5; }
-    .node.host { fill: var(--rose); } .node.subnet { fill: var(--sky); } .node.interface { fill: var(--mint); }
-    .miniTable { width: 100%; border-collapse: collapse; }
-    .miniTable th, .miniTable td { text-align:left; padding: 13px 8px; border-top:1px solid var(--line); vertical-align:top; }
-    .miniTable th { color: var(--soft-ink); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #6d5968; }
-    .tinyDetail { margin-top: 10px; color: var(--soft-ink); font-size: 13px; }
-    .severity-critical, .severity-high { color: var(--bad); } .severity-medium { color: var(--wait); }
-    @media (max-width: 980px) { .topbar, .dashboard, .two { grid-template-columns: 1fr; display: grid; } .modeDock { justify-content: flex-start; } .companion, .tabs { position: static; } }
-    @media (max-width: 560px) { .mascotHero { grid-template-columns: 1fr; } .petBlob { width: 112px; } .senseGrid { grid-template-columns: 1fr; } }
+    body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--bg); }
+    button { appearance: none; font: inherit; cursor: pointer; }
+    .shell { width: min(1440px, 100%); margin: 0 auto; padding: 28px clamp(18px, 4vw, 48px) 48px; }
+    .top { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: end; padding-bottom: 28px; border-bottom: 1px solid var(--line-strong); }
+    .product { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+    .statusDot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); }
+    h1 { margin: 0; max-width: 980px; font-size: clamp(38px, 6vw, 76px); line-height: .96; letter-spacing: -.07em; font-weight: 850; }
+    .lead { margin: 18px 0 0; max-width: 790px; color: var(--muted); font-size: clamp(16px, 2vw, 20px); line-height: 1.55; }
+    .modeBar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .modeBar button, .tabs button, .plainButton { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 9px 12px; border-radius: 10px; }
+    .modeBar button:hover, .tabs button:hover, .plainButton:hover { border-color: var(--line-strong); color: var(--ink); background: #fff; }
+    .modeBar button:focus-visible, .tabs button:focus-visible, .plainButton:focus-visible { outline: none; box-shadow: var(--focus); }
+    .modeBar button.active, .tabs button.active { color: var(--ink); background: var(--surface); border-color: var(--ink); }
+    .layout { display: grid; grid-template-columns: minmax(270px, 350px) minmax(0, 1fr); gap: 34px; margin-top: 28px; align-items: start; }
+    .side { position: sticky; top: 18px; border-top: 2px solid var(--ink); }
+    .statusBlock { padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .statusTitle { margin: 0 0 6px; font-size: 24px; letter-spacing: -.035em; }
+    .statusText { margin: 0; color: var(--muted); line-height: 1.5; }
+    .thinking { padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .label { display: block; margin-bottom: 8px; color: var(--faint); font-size: 12px; font-weight: 760; letter-spacing: .12em; text-transform: uppercase; }
+    .thought { margin: 0; line-height: 1.55; }
+    .metrics { display: grid; gap: 0; border-bottom: 1px solid var(--line); }
+    .metric { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .metric span { color: var(--muted); }
+    .metric strong { font-size: 18px; letter-spacing: -.03em; }
+    .risk-low { color: var(--good); } .risk-mid { color: var(--warn); } .risk-high { color: var(--bad); }
+    .tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; flex-wrap: wrap; padding: 0 0 18px; margin-bottom: 4px; background: linear-gradient(var(--bg) 82%, rgba(247,248,250,0)); }
+    .panel { display: none; } .panel.active { display: block; }
+    .section { padding: 28px 0; border-top: 1px solid var(--line-strong); }
+    .section:first-child { border-top: 0; padding-top: 0; }
+    .sectionHeader { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 34%); gap: 28px; align-items: start; margin-bottom: 18px; }
+    h2 { margin: 0; font-size: clamp(24px, 3vw, 40px); line-height: 1.05; letter-spacing: -.055em; }
+    .sectionLead { margin: 0; color: var(--muted); line-height: 1.55; }
+    .summaryLine { display: flex; flex-wrap: wrap; gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .summaryItem { flex: 1 1 170px; padding: 14px 16px 14px 0; border-right: 1px solid var(--line); }
+    .summaryItem:last-child { border-right: 0; }
+    .summaryItem small { display: block; color: var(--faint); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
+    .summaryItem strong { display: block; font-size: 18px; letter-spacing: -.025em; }
+    .mapFrame { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px 0; }
+    svg { width: 100%; min-height: 390px; background: transparent; }
+    .nodeLabel { font: 13px ui-sans-serif, system-ui; fill: var(--ink); font-weight: 760; }
+    .nodeMeta { font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--muted); }
+    .link { stroke: #aeb8c5; stroke-width: 1.5; stroke-linecap: round; }
+    .node { fill: #fff; stroke: #aeb8c5; stroke-width: 1.2; rx: 8; ry: 8; }
+    .node.gateway, .node.default-gateway { stroke: var(--accent); stroke-width: 2; }
+    .node.host { fill: #eef4ff; } .node.subnet { fill: #f6f8fb; } .node.interface { fill: #eefaf5; }
+    .list { border-top: 1px solid var(--line); }
+    .row { display: grid; grid-template-columns: minmax(170px, 28%) minmax(0, 1fr); gap: 22px; padding: 16px 0; border-bottom: 1px solid var(--line); line-height: 1.5; }
+    .rowTitle { font-weight: 760; }
+    .rowBody { color: var(--muted); }
+    .rowBody strong { color: var(--ink); }
+    .quietbar { height: 8px; background: #e7ebf0; margin-top: 12px; overflow: hidden; }
+    .quietbar > span { display:block; height: 100%; background: var(--accent); }
+    .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px; }
+    table { width: 100%; border-collapse: collapse; border-top: 1px solid var(--line); }
+    th, td { text-align: left; padding: 14px 10px 14px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--faint); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #4b5563; }
+    .severity-critical, .severity-high { color: var(--bad); } .severity-medium { color: var(--warn); }
+    @media (max-width: 980px) { .top, .layout, .sectionHeader, .split { grid-template-columns: 1fr; } .modeBar { justify-content: flex-start; } .side, .tabs { position: static; } }
+    @media (max-width: 640px) { .shell { padding-inline: 16px; } .row { grid-template-columns: 1fr; gap: 4px; } .summaryItem { border-right: 0; border-bottom: 1px solid var(--line); } }
   </style>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
+  <div class="shell">
+    <header class="top">
       <div>
-        <div class="brandMark"><span class="brandDot"></span><span id="liveText">Protectogotchi wacht auf</span></div>
-        <h1>Netzwerkschutz, der sich wie ein kleines Haustier anfühlt.</h1>
-        <p class="subtitle">Keine Fachsprache, keine JSON-Wände: Protectogotchi erzählt dir ruhig und freundlich, ob zuhause alles normal wirkt.</p>
+        <div class="product"><span class="statusDot"></span><span id="liveText">Live-Status wird geladen</span></div>
+        <h1>Netzwerkstatus klar, ruhig und verständlich.</h1>
+        <p class="lead">Diese Oberfläche erklärt, was im lokalen Netzwerk passiert, ohne Rohdatenwände und ohne Fachsprache. Details bleiben verfügbar, werden aber in lesbare Aussagen übersetzt.</p>
       </div>
-      <div class="modeDock" aria-label="Modus"><button data-mode="learn" class="active" onclick="setMode('learn')">Lernen</button><button data-mode="watch" onclick="setMode('watch')">Nur erzählen</button><button data-mode="guard" onclick="setMode('guard')">Aufpassen</button><button data-mode="god" onclick="setMode('god')">Autopilot</button><button data-mode="pause" onclick="setMode('pause')">Pause</button></div>
+      <div class="modeBar" aria-label="Modus"><button data-mode="learn" class="active" onclick="setMode('learn')">Lernen</button><button data-mode="watch" onclick="setMode('watch')">Nur beobachten</button><button data-mode="guard" onclick="setMode('guard')">Schützen</button><button data-mode="god" onclick="setMode('god')">Autopilot</button><button data-mode="pause" onclick="setMode('pause')">Pause</button></div>
     </header>
-    <main class="dashboard">
-      <aside class="companion">
-        <section class="mascotPanel">
-          <div class="mascotHero"><div class="petBlob"><div class="face" id="face">( o_o)</div></div><div><p class="state" id="state">Ich schnuppere kurz.</p><div class="muted" id="mood">Gleich erzähle ich dir, was ich sehe.</div></div></div>
-          <div class="thoughtCloud" aria-label="Gedankenblase"><span class="eyebrow">Gedankenblase</span><span id="thought">Ich schaue nach, ob sich zuhause etwas ungewohnt anfühlt.</span></div>
-        </section>
-        <section class="mascotPanel senseGrid" aria-label="Kurzstatus"><div class="sense"><span>Bauchgefühl</span><strong id="risk">-</strong></div><div class="sense"><span>Erfahrung</span><strong id="level">-</strong></div><div class="sense"><span>Gelernt</span><strong id="baseline">-</strong></div><div class="sense"><span>Mitbewohner</span><strong id="devicesCount">-</strong></div></section>
+    <main class="layout">
+      <aside class="side" aria-label="Status">
+        <div class="statusBlock"><span class="label">Aktueller Zustand</span><h2 class="statusTitle" id="state">Wird geladen</h2><p class="statusText" id="mood">Die erste Prüfung läuft.</p></div>
+        <div class="thinking"><span class="label">Einordnung</span><p class="thought" id="thought">Ich prüfe gerade, ob etwas vom normalen Muster abweicht.</p></div>
+        <div class="metrics"><div class="metric"><span>Risiko</span><strong id="risk">-</strong></div><div class="metric"><span>Lernstand</span><strong id="level">-</strong></div><div class="metric"><span>Basis gelernt</span><strong id="baseline">-</strong></div><div class="metric"><span>Geräte</span><strong id="devicesCount">-</strong></div></div>
       </aside>
-      <div class="work">
-        <nav class="tabs" aria-label="Ansichten"><button data-tab="home" class="active" onclick="switchTab('home')">Zuhause</button><button data-tab="now" onclick="switchTab('now')">Gerade los</button><button data-tab="worries" onclick="switchTab('worries')">Sorgen</button><button data-tab="neighbors" onclick="switchTab('neighbors')">Mitbewohner</button><button data-tab="practice" onclick="switchTab('practice')">Üben</button><button data-tab="help" onclick="switchTab('help')">Hilfe</button></nav>
-        <section class="panel active" data-panel="home"><div class="section"><h2 class="sectionTitle">Dein Zuhause auf einen Blick</h2><p class="sectionLead">Ich übersetze Netzwerk-Signale in einfache Beobachtungen: Wer ist da, wohin geht es raus und ob sich etwas ungewohnt anfühlt.</p><div class="mapWrap"><svg id="networkGraph" role="img" aria-label="Einfache Netzwerkkarte"></svg></div><div class="softStrip" id="plainSummary"></div></div><div class="section"><h2 class="sectionTitle">Wie wach ich gerade bin</h2><p class="sectionLead">Wenn lange nichts passiert, wird mir ein bisschen langweilig — dann mache ich selbstständig häufigere Kontrollblicke.</p><div id="watchfulness"></div></div></section>
-        <section class="panel" data-panel="now"><div class="section"><h2 class="sectionTitle">Was gerade im Netzwerk los ist</h2><p class="sectionLead">Hier steht nicht „TCP/UDP-Salat“, sondern eine kleine Alltagserzählung über die aktuellen Bewegungen.</p><div id="activity" class="lineList">lädt...</div></div><div class="two"><div class="section"><h2 class="sectionTitle">Meine kleine Zusammenfassung</h2><div id="networkDetail" class="lineList">lädt...</div></div><div class="section"><h2 class="sectionTitle">Was ich gut sehen kann</h2><div id="coverage" class="lineList">lädt...</div></div></div></section>
-        <section class="panel" data-panel="worries"><div class="section"><h2 class="sectionTitle">Sorgen & liebe Vorschläge</h2><p class="sectionLead">Wenn mir etwas komisch vorkommt, formuliere ich es als klare Empfehlung statt als Alarmtext.</p><div id="findings" class="lineList">lädt...</div></div><div class="section"><h2 class="sectionTitle">Was ich mir gemerkt habe</h2><div id="history" class="lineList">lädt...</div></div></section>
-        <section class="panel" data-panel="neighbors"><div class="section"><h2 class="sectionTitle">Bekannte Mitbewohner</h2><p class="sectionLead">Geräte werden wie Haushaltsmitglieder gezeigt: Name, Adresse und wann ich sie zuletzt gesehen habe.</p><table class="miniTable"><thead><tr><th>Name</th><th>Adresse</th><th>Gesehen</th><th>Zuletzt</th></tr></thead><tbody id="devices"></tbody></table></div></section>
-        <section class="panel" data-panel="practice"><div class="section"><h2 class="sectionTitle">Gefahr gefahrlos üben</h2><p class="sectionLead">Du kannst kleine Situationen ausprobieren und ich erkläre, was ich daraus lernen würde.</p><div class="softStrip" id="simulationButtons"></div><div id="simulation" class="lineList"><div class="story">Such dir ein kleines Szenario aus.</div></div></div><div class="section"><h2 class="sectionTitle">Passt mein Platz?</h2><div id="placement" class="lineList">lädt...</div></div></section>
-        <section class="panel" data-panel="help"><div class="two"><div class="section"><h2 class="sectionTitle">Was ich benutzen kann</h2><div id="tools" class="lineList">lädt...</div></div><div class="section"><h2 class="sectionTitle">Was ich erklären kann</h2><div id="knowledge" class="lineList">lädt...</div></div></div></section>
+      <div class="content">
+        <nav class="tabs" aria-label="Ansichten"><button data-tab="home" class="active" onclick="switchTab('home')">Übersicht</button><button data-tab="now" onclick="switchTab('now')">Live</button><button data-tab="worries" onclick="switchTab('worries')">Hinweise</button><button data-tab="neighbors" onclick="switchTab('neighbors')">Geräte</button><button data-tab="practice" onclick="switchTab('practice')">Simulation</button><button data-tab="help" onclick="switchTab('help')">System</button></nav>
+        <section class="panel active" data-panel="home"><section class="section"><div class="sectionHeader"><h2>Überblick</h2><p class="sectionLead">Die wichtigsten Fakten in einem Satz pro Thema: Verbindung nach draußen, bekannte Geräte, aktueller Modus und sichtbare Aktivität.</p></div><div class="summaryLine" id="plainSummary"></div></section><section class="section"><div class="sectionHeader"><h2>Netzwerkkarte</h2><p class="sectionLead">Eine reduzierte Karte zeigt nur die Struktur, die für Orientierung wichtig ist.</p></div><div class="mapFrame"><svg id="networkGraph" role="img" aria-label="Einfache Netzwerkkarte"></svg></div></section><section class="section"><div class="sectionHeader"><h2>Wachsamkeit</h2><p class="sectionLead">Wenn über mehrere Prüfungen nichts Auffälliges passiert, prüft Protectogotchi häufiger im Hintergrund. Das wird hier transparent angezeigt.</p></div><div id="watchfulness" class="list"></div></section></section>
+        <section class="panel" data-panel="now"><section class="section"><div class="sectionHeader"><h2>Live-Aktivität</h2><p class="sectionLead">Aktuelle Bewegungen werden als verständliche Ereignisse beschrieben. Keine rohen JSON-Daten, keine Protokollwand.</p></div><div id="activity" class="list">lädt...</div></section><div class="split"><section class="section"><div class="sectionHeader"><h2>Zusammenfassung</h2><p class="sectionLead">Was gerade wichtig ist.</p></div><div id="networkDetail" class="list">lädt...</div></section><section class="section"><div class="sectionHeader"><h2>Sichtbarkeit</h2><p class="sectionLead">Was die aktuelle Platzierung gut oder weniger gut erkennen kann.</p></div><div id="coverage" class="list">lädt...</div></section></div></section>
+        <section class="panel" data-panel="worries"><section class="section"><div class="sectionHeader"><h2>Hinweise und Empfehlungen</h2><p class="sectionLead">Auffälligkeiten werden nach Dringlichkeit erklärt und mit einer konkreten nächsten Handlung versehen.</p></div><div id="findings" class="list">lädt...</div></section><section class="section"><div class="sectionHeader"><h2>Verlauf</h2><p class="sectionLead">Die letzten gemerkten Hinweise, damit Veränderungen nachvollziehbar bleiben.</p></div><div id="history" class="list">lädt...</div></section></section>
+        <section class="panel" data-panel="neighbors"><section class="section"><div class="sectionHeader"><h2>Bekannte Geräte</h2><p class="sectionLead">Geräte werden nach Name, Adresse, Häufigkeit und letzter Sichtung sortiert dargestellt.</p></div><table><thead><tr><th>Name</th><th>Adresse</th><th>Gesehen</th><th>Zuletzt</th></tr></thead><tbody id="devices"></tbody></table></section></section>
+        <section class="panel" data-panel="practice"><section class="section"><div class="sectionHeader"><h2>Simulation</h2><p class="sectionLead">Gefahrensituationen können gefahrlos mit synthetischen Daten ausprobiert werden.</p></div><div id="simulationButtons" class="summaryLine"></div><div id="simulation" class="list"><div class="row"><div class="rowTitle">Bereit</div><div class="rowBody">Wähle ein Szenario aus.</div></div></div></section><section class="section"><div class="sectionHeader"><h2>Platzierung</h2><p class="sectionLead">Zeigt ehrlich, was diese Installation erkennen oder verhindern kann.</p></div><div id="placement" class="list">lädt...</div></section></section>
+        <section class="panel" data-panel="help"><div class="split"><section class="section"><div class="sectionHeader"><h2>Werkzeuge</h2><p class="sectionLead">Welche lokalen Funktionen verfügbar sind.</p></div><div id="tools" class="list">lädt...</div></section><section class="section"><div class="sectionHeader"><h2>Wissen</h2><p class="sectionLead">Welche Themen Protectogotchi erklären kann.</p></div><div id="knowledge" class="list">lädt...</div></section></div></section>
       </div>
     </main>
   </div>
   <script>
-    const faces = { idle:"( -_-)", bored:"( -3-)", learning:"( o_o)", analyzing:"( @_@)", alert:"( O_O)!", fighting:"( >_<)", happy:"( ^_^)", curious:"( •_•)?" };
-    const modeNames = { learn:"Lernen", watch:"Nur erzählen", guard:"Aufpassen", god:"Autopilot", pause:"Pause" };
+    const modeNames = { learn:"Lernen", watch:"Nur beobachten", guard:"Schützen", god:"Autopilot", pause:"Pause" };
     async function getJson(path){ const r=await fetch(path); if(!r.ok) throw new Error(path+" -> "+r.status); return r.json(); }
-    function severityWord(s){ return ({info:"nur eine Notiz",low:"kleine Sorge",medium:"bitte anschauen",high:"wichtig",critical:"dringend"})[s] || s; }
-    function riskWord(score){ if(score>=70) return "unruhig"; if(score>=35) return "aufmerksam"; return "ruhig"; }
+    function severityWord(s){ return ({info:"Information",low:"Niedrig",medium:"Mittel",high:"Hoch",critical:"Kritisch"})[s] || s; }
+    function riskWord(score){ if(score>=70) return "hoch"; if(score>=35) return "mittel"; return "niedrig"; }
     async function refresh(){
-      const live=await getJson('/api/live'); const scan=live.scan||{}; const state=live.state||{}; const snapshot=scan.snapshot||{}; const faceState=live.pet_state || scan.face_state || (state.baseline_ready?'happy':'learning');
-      document.getElementById('face').textContent=faces[faceState]||faces.idle; document.getElementById('state').textContent=live.pet_headline || modeNames[live.mode] || 'Ich passe auf'; document.getElementById('mood').textContent=live.pet_subtitle || live.mode_description || '';
-      document.getElementById('thought').textContent=live.thought || 'Ich schaue mich um und sage Bescheid, wenn mir etwas komisch vorkommt.'; renderMode(live.mode||'learn');
-      document.getElementById('risk').textContent=riskWord(scan.risk_score||0); document.getElementById('risk').className=(scan.risk_score||0)>=70?'risk-high':((scan.risk_score||0)>=35?'risk-mid':'risk-low'); document.getElementById('level').textContent=state.level??'-'; document.getElementById('baseline').textContent=state.baseline_ready?'ja':((state.learning_remaining||0)+' Blicke'); document.getElementById('devicesCount').textContent=state.known_devices??'-'; document.getElementById('liveText').textContent='zuletzt geschnuppert: '+(live.updated_at||'gerade');
+      const live=await getJson('/api/live'); const scan=live.scan||{}; const state=live.state||{}; const snapshot=scan.snapshot||{};
+      document.getElementById('state').textContent=live.pet_headline || modeNames[live.mode] || 'Aktiv'; document.getElementById('mood').textContent=live.pet_subtitle || live.mode_description || '';
+      document.getElementById('thought').textContent=live.thought || 'Keine akute Abweichung erkannt.'; renderMode(live.mode||'learn');
+      document.getElementById('risk').textContent=riskWord(scan.risk_score||0); document.getElementById('risk').className=(scan.risk_score||0)>=70?'risk-high':((scan.risk_score||0)>=35?'risk-mid':'risk-low'); document.getElementById('level').textContent=state.level??'-'; document.getElementById('baseline').textContent=state.baseline_ready?'ja':((state.learning_remaining||0)+' Prüfungen'); document.getElementById('devicesCount').textContent=state.known_devices??'-'; document.getElementById('liveText').textContent='Aktualisiert: '+(live.updated_at||'gerade');
       renderPlainSummary(live, snapshot); renderWatchfulness(live); renderActivity(live, snapshot); renderGraph((live.network_map||{}).graph||{nodes:[],edges:[]}); renderFindings(scan.findings||[]); renderHistory(live.finding_history||[]); renderDevices(live.devices||[]); renderPlacement(live.placement_report||{}); renderSimulationButtons(live.simulations||[]); renderNetworkStory(live, snapshot); renderCoverage(live); renderTools(live.tools||[]); renderKnowledge(live.knowledge||[]);
     }
-    function renderPlainSummary(live,s){ const items=[['WLAN', (s.wifi||{}).ssid || 'nicht erkannt'], ['Internet-Tür', s.default_gateway || 'noch unbekannt'], ['Modus', modeNames[live.mode] || live.mode], ['Bewegungen', (s.connections||[]).length+' aktuell'], ['Geräte', (s.devices||[]).length+' gesehen']]; document.getElementById('plainSummary').innerHTML=items.map(i=>`<span class="tag"><strong>${i[0]}:</strong> ${escapeHtml(i[1])}</span>`).join(''); }
-    function renderWatchfulness(live){ const quiet=live.quiet_scans||0; const pct=Math.min(100, quiet*25); const text=quiet>=2?'Mir ist etwas langweilig, also schaue ich extra oft nach.':'Ich mache normale Kontrollblicke und bleibe entspannt.'; document.getElementById('watchfulness').innerHTML=`<div class="story"><strong>${escapeHtml(text)}</strong><span class="muted">Ruhige Runden hintereinander: ${quiet}. Je ruhiger es ist, desto flauschiger und häufiger prüfe ich kurz.</span><div class="quietbar"><span style="width:${pct}%"></span></div></div>`; }
-    function renderActivity(live,s){ const findings=(live.scan||{}).findings||[]; const lines=[]; lines.push(`<div class="story"><strong>${findings.length?'Ich habe etwas bemerkt':'Alles wirkt gerade ruhig'}</strong><span class="muted">${escapeHtml(live.activity_summary||'Keine ungewöhnlichen Geräusche im Netzwerk.')}</span></div>`); (s.connections||[]).slice(0,8).forEach(c=>lines.push(`<div class="story"><strong>${escapeHtml(c.protocol||'Verbindung')} bewegt sich</strong><span class="muted">Von ${escapeHtml(c.local_address||'diesem Gerät')} zu ${escapeHtml(c.remote_address||'zuhause oder Internet')}. Status: ${escapeHtml(c.state||'unbekannt')}.</span></div>`)); document.getElementById('activity').innerHTML=lines.join(''); }
-    function renderNetworkStory(live,s){ const summary=(live.network_map||{}).summary||{}; const rows=[['Haustür ins Internet', s.default_gateway || 'noch nicht erkannt'], ['Bekannte Bereiche', Object.entries(summary).map(([k,v])=>`${v}× ${k}`).join(', ') || 'noch keine Karte'], ['Aktuelle Bewegungen', (s.connections||[]).length ? `${s.connections.length} Verbindung(en), die ich gerade sehe` : 'gerade keine auffällige Bewegung']]; document.getElementById('networkDetail').innerHTML=rows.map(r=>`<div class="story"><strong>${r[0]}</strong><span class="muted">${escapeHtml(r[1])}</span></div>`).join(''); }
-    function renderCoverage(live){ const coverage=((live.network_map||{}).coverage||[]); document.getElementById('coverage').innerHTML=(coverage.length?coverage:['Noch keine Abdeckung bekannt. Ich lerne erst, wo ich gut hinschauen kann.']).map(line=>`<div class="story"><span class="muted">${escapeHtml(line)}</span></div>`).join(''); }
-    function renderFindings(findings){ const t=document.getElementById('findings'); if(!findings.length){t.innerHTML="<div class='story'><strong>Keine Sorgen.</strong><span class='muted'>Ich sehe gerade nichts, das dich stressen sollte.</span></div>"; return;} t.innerHTML=findings.map(f=>`<div class="story"><strong class="severity-${f.severity}">${severityWord(f.severity)}: ${escapeHtml(f.title)}</strong><span>${escapeHtml(f.description)}</span><div class="tinyDetail">Mein Vorschlag: ${escapeHtml(f.recommended_action||'erstmal beobachten')}</div></div>`).join(''); }
-    function renderHistory(history){ const t=document.getElementById('history'); if(!history.length){t.innerHTML="<div class='story'><span class='muted'>Noch keine Erinnerungen. Das ist eigentlich schön ruhig.</span></div>"; return;} t.innerHTML=history.slice(-10).reverse().map(f=>`<div class="story"><strong class="severity-${f.severity}">${escapeHtml(f.title)}</strong><span class="muted">${escapeHtml(f.seen_at)} · ${severityWord(f.severity)}</span></div>`).join(''); }
+    function row(title, body, extra=''){ return `<div class="row"><div class="rowTitle">${escapeHtml(title)}</div><div class="rowBody">${body}${extra}</div></div>`; }
+    function renderPlainSummary(live,s){ const items=[['WLAN', (s.wifi||{}).ssid || 'nicht erkannt'], ['Gateway', s.default_gateway || 'unbekannt'], ['Modus', modeNames[live.mode] || live.mode], ['Aktivität', (s.connections||[]).length+' Verbindungen'], ['Geräte', (s.devices||[]).length+' sichtbar']]; document.getElementById('plainSummary').innerHTML=items.map(i=>`<div class="summaryItem"><small>${escapeHtml(i[0])}</small><strong>${escapeHtml(i[1])}</strong></div>`).join(''); }
+    function renderWatchfulness(live){ const quiet=live.quiet_scans||0; const pct=Math.min(100, quiet*25); const text=quiet>=2?'Seit mehreren Prüfungen unauffällig. Die Hintergrundprüfung läuft jetzt häufiger.':'Normale Hintergrundprüfung aktiv.'; document.getElementById('watchfulness').innerHTML=row('Prüfrhythmus', escapeHtml(text)+`<div class="quietbar"><span style="width:${pct}%"></span></div><div>Ruhige Prüfungen in Folge: ${quiet}</div>`); }
+    function renderActivity(live,s){ const findings=(live.scan||{}).findings||[]; const lines=[]; lines.push(row(findings.length?'Auffälligkeit erkannt':'Keine Auffälligkeit', escapeHtml(live.activity_summary||'Aktuell keine ungewöhnliche Netzwerkaktivität.'))); (s.connections||[]).slice(0,8).forEach(c=>lines.push(row(c.protocol||'Verbindung', `Von ${escapeHtml(c.local_address||'lokal')} zu ${escapeHtml(c.remote_address||'extern/lokal')}. Status: ${escapeHtml(c.state||'unbekannt')}.`))); document.getElementById('activity').innerHTML=lines.join(''); }
+    function renderNetworkStory(live,s){ const summary=(live.network_map||{}).summary||{}; const rows=[['Gateway', escapeHtml(s.default_gateway || 'Noch nicht erkannt')], ['Karte', escapeHtml(Object.entries(summary).map(([k,v])=>`${v}× ${k}`).join(', ') || 'Noch keine verwertbare Karte')], ['Aktivität', (s.connections||[]).length ? `${s.connections.length} aktuell sichtbare Verbindung(en)` : 'Keine aktuell sichtbare Verbindung']]; document.getElementById('networkDetail').innerHTML=rows.map(r=>row(r[0], r[1])).join(''); }
+    function renderCoverage(live){ const coverage=((live.network_map||{}).coverage||[]); document.getElementById('coverage').innerHTML=(coverage.length?coverage:['Noch keine Aussage zur Abdeckung verfügbar.']).map(line=>row('Abdeckung', escapeHtml(line))).join(''); }
+    function renderFindings(findings){ const t=document.getElementById('findings'); if(!findings.length){t.innerHTML=row('Keine Hinweise', 'Aktuell gibt es nichts, das Aufmerksamkeit braucht.'); return;} t.innerHTML=findings.map(f=>row(`${severityWord(f.severity)}: ${f.title}`, `${escapeHtml(f.description)}<br><strong>Empfehlung:</strong> ${escapeHtml(f.recommended_action||'beobachten')}`)).join(''); }
+    function renderHistory(history){ const t=document.getElementById('history'); if(!history.length){t.innerHTML=row('Noch kein Verlauf', 'Bisher wurden keine Hinweise gespeichert.'); return;} t.innerHTML=history.slice(-10).reverse().map(f=>row(f.title, `${escapeHtml(f.seen_at)} · ${severityWord(f.severity)}`)).join(''); }
     function renderDevices(devices){ document.getElementById('devices').innerHTML=devices.map(d=>`<tr><td>${escapeHtml(d.hostname||'Unbenanntes Gerät')}<br><code>${escapeHtml(d.mac)}</code></td><td>${escapeHtml((d.ips||[]).join(', ')||'-')}</td><td>${d.seen_count||0}×</td><td>${escapeHtml(d.last_seen||'-')}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Noch keine Geräte gelernt.</td></tr>'; }
-    function renderPlacement(r){ const items=[['Kurzfassung', r.summary||'noch unbekannt'], ['Schutz aktiv', r.active_response_enabled?'ja':'noch nicht'], ['Automatisierung', r.firewall_controller_automation?'ja':'nein']]; const steps=(r.next_steps||[]).map(s=>`<div class="story"><strong>Nächster Schritt</strong><span class="muted">${escapeHtml(s)}</span></div>`).join(''); document.getElementById('placement').innerHTML=items.map(i=>`<div class="story"><strong>${i[0]}</strong><span class="muted">${escapeHtml(i[1])}</span></div>`).join('')+steps; }
-    function renderSimulationButtons(s){ document.getElementById('simulationButtons').innerHTML=s.map(n=>`<button class="pillButton" onclick="runLabScenario('${escapeHtml(n)}')">${escapeHtml(n)}</button>`).join(''); }
-    async function runLabScenario(scenario){ const r=await getJson('/api/simulate?scenario='+encodeURIComponent(scenario)); document.getElementById('simulation').innerHTML=`<div class="story"><strong>${escapeHtml(r.scenario)}</strong><span class="muted">Mein Bauchgefühl wäre: ${riskWord(r.risk_score||0)}.</span></div>`+((r.lessons||[]).map(l=>`<div class="story"><span class="muted">${escapeHtml(l)}</span></div>`).join('')); }
-    function renderTools(tools){ document.getElementById('tools').innerHTML=tools.map(t=>`<div class="story"><strong>${escapeHtml(t.name)}</strong><span class="muted">${escapeHtml(t.status)}. Das ist eines meiner kleinen Hilfsmittel.</span></div>`).join('') || '<div class="story"><span class="muted">Keine Hilfsmittel gemeldet.</span></div>'; }
-    function renderKnowledge(topics){ document.getElementById('knowledge').innerHTML=topics.map(t=>`<div class="story"><strong>${escapeHtml(t.name)}</strong><span class="muted">Bereich: ${escapeHtml(t.domain)}. Frag mich danach, wenn du es einfacher erklärt haben möchtest.</span></div>`).join('') || '<div class="story"><span class="muted">Noch kein Wissen geladen.</span></div>'; }
+    function renderPlacement(r){ const items=[['Kurzfassung', r.summary||'noch unbekannt'], ['Schutz aktiv', r.active_response_enabled?'ja':'nein'], ['Automatisierung', r.firewall_controller_automation?'ja':'nein']]; const steps=(r.next_steps||[]).map(s=>row('Nächster Schritt', escapeHtml(s))).join(''); document.getElementById('placement').innerHTML=items.map(i=>row(i[0], escapeHtml(i[1]))).join('')+steps; }
+    function renderSimulationButtons(s){ document.getElementById('simulationButtons').innerHTML=s.map(n=>`<div class="summaryItem"><button class="plainButton" onclick="runLabScenario('${escapeHtml(n)}')">${escapeHtml(n)}</button></div>`).join(''); }
+    async function runLabScenario(scenario){ const r=await getJson('/api/simulate?scenario='+encodeURIComponent(scenario)); document.getElementById('simulation').innerHTML=row(r.scenario, `Bewertung: ${riskWord(r.risk_score||0)}.`)+((r.lessons||[]).map(l=>row('Lerneffekt', escapeHtml(l))).join('')); }
+    function renderTools(tools){ document.getElementById('tools').innerHTML=tools.map(t=>row(t.name, `${escapeHtml(t.status)}`)).join('') || row('Keine Werkzeuge', 'Keine lokalen Werkzeuge gemeldet.'); }
+    function renderKnowledge(topics){ document.getElementById('knowledge').innerHTML=topics.map(t=>row(t.name, `Bereich: ${escapeHtml(t.domain)}`)).join('') || row('Kein Wissen', 'Noch keine Themen geladen.'); }
     function renderGraph(graph){ const svg=document.getElementById('networkGraph'), nodes=graph.nodes||[], edges=graph.edges||[], width=Math.max(760,svg.clientWidth||760), columns={host:90,interface:250,subnet:430,gateway:630,'default-gateway':630,endpoint:630,'local-host':630,'infrastructure-candidate':630}, grouped={}; nodes.forEach(n=>{const k=n.kind||'endpoint'; (grouped[k]=grouped[k]||[]).push(n);}); const pos={}; ['host','interface','subnet','default-gateway','gateway','infrastructure-candidate','endpoint','local-host'].forEach(k=>(grouped[k]||[]).forEach((n,i)=>pos[n.id]={x:columns[k]||630,y:65+i*70})); const height=Math.max(390,...Object.values(pos).map(p=>p.y+55)); svg.setAttribute('viewBox',`0 0 ${width} ${height}`); svg.innerHTML=edges.map(e=>pos[e.source]&&pos[e.target]?`<line class="link" x1="${pos[e.source].x+62}" y1="${pos[e.source].y}" x2="${pos[e.target].x-62}" y2="${pos[e.target].y}"></line>`:'').join('')+nodes.map(n=>{const p=pos[n.id]; if(!p)return''; return `<g><rect class="node ${n.kind||'endpoint'}" x="${p.x-62}" y="${p.y-24}" width="124" height="48"></rect><text class="nodeLabel" x="${p.x-52}" y="${p.y-4}">${escapeHtml(n.label||n.id)}</text><text class="nodeMeta" x="${p.x-52}" y="${p.y+13}">${escapeHtml([n.ip,n.mac].filter(Boolean).join(' · '))}</text></g>`}).join(''); }
     function escapeHtml(v){ return String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
     function switchTab(tab){ document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab)); document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('active',p.dataset.panel===tab)); }
