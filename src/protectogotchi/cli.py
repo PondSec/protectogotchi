@@ -15,6 +15,7 @@ from protectogotchi.enforcement import get_enforcement_mode, list_enforcement_mo
 from protectogotchi.face import FACES, render_face
 from protectogotchi.knowledge import get_topic, list_topics
 from protectogotchi.netutil import normalize_mac
+from protectogotchi.network_map import NetworkMapper
 from protectogotchi.response import ResponseExecutor, ResponsePlanner
 from protectogotchi.simulation import SCENARIOS, run_simulation
 from protectogotchi.state import StateStore
@@ -116,6 +117,14 @@ def build_parser() -> argparse.ArgumentParser:
     topology_parser = subparsers.add_parser("topology", help="Build a passive network topology.")
     topology_parser.add_argument("--json", action="store_true", help="Print full topology JSON.")
     topology_parser.add_argument(
+        "--collector",
+        choices=["macos", "linux"],
+        help="Force a collector instead of auto-detecting the platform.",
+    )
+
+    map_parser = subparsers.add_parser("map", help="Show categorized network map.")
+    map_parser.add_argument("--json", action="store_true", help="Print JSON.")
+    map_parser.add_argument(
         "--collector",
         choices=["macos", "linux"],
         help="Force a collector instead of auto-detecting the platform.",
@@ -252,6 +261,14 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(topology.to_dict(), indent=2, sort_keys=True))
         else:
             _print_topology(topology)
+        return 0
+    if args.command == "map":
+        snapshot = get_collector(args.collector).collect()
+        network_map = NetworkMapper().build(snapshot)
+        if args.json:
+            print(json.dumps(network_map.to_dict(), indent=2, sort_keys=True))
+        else:
+            _print_network_map(network_map)
         return 0
     if args.command == "web":
         run_web(
@@ -471,3 +488,28 @@ def _print_topology(topology) -> None:
     print("edges:")
     for edge in topology.edges:
         print(f"- {edge.source} --{edge.relation}--> {edge.target}")
+
+
+def _print_network_map(network_map) -> None:
+    print("summary:")
+    for key, value in sorted(network_map.summary.items()):
+        print(f"- {key}: {value}")
+    print("coverage:")
+    for item in network_map.coverage:
+        print(f"- {item}")
+    print("interfaces:")
+    for interface in network_map.interfaces:
+        print(f"- {interface.name} [{interface.role}] ipv4={','.join(interface.ipv4) or '-'}")
+    print("routes:")
+    important_routes = [
+        route
+        for route in network_map.routes
+        if route.role in {"default", "routed-network", "connected-network"}
+    ]
+    for route in important_routes:
+        print(
+            f"- {route.destination} [{route.role}] "
+            f"via={route.gateway or '-'} dev={route.interface or '-'}"
+        )
+    if not important_routes:
+        print("- none")

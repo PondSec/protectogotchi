@@ -33,6 +33,12 @@ TOOLS: tuple[ToolDefinition, ...] = (
         command="protectogotchi topology",
     ),
     ToolDefinition(
+        name="map",
+        category="observe",
+        summary="Show categorized interfaces, routes, subnets, gateways, and coverage limits.",
+        command="protectogotchi map",
+    ),
+    ToolDefinition(
         name="web",
         category="interface",
         summary="Run local web status/API for network card, topology, tools, and knowledge.",

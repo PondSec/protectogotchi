@@ -30,6 +30,20 @@ def test_rules_command_lists_detection_rules(capsys):
     assert "new_device_seen" in output
 
 
+def test_map_command_accepts_json(monkeypatch, capsys):
+    from protectogotchi.models import NetworkSnapshot, utc_now
+
+    class FakeCollector:
+        def collect(self):
+            return NetworkSnapshot(taken_at=utc_now(), hostname="test-host", platform="test")
+
+    monkeypatch.setattr("protectogotchi.cli.get_collector", lambda _name: FakeCollector())
+    assert main(["map", "--json"]) == 0
+    output = capsys.readouterr().out
+    assert '"summary"' in output
+    assert '"coverage"' in output
+
+
 def test_knowledge_command_shows_playbook(capsys):
     assert main(["knowledge", "arp-spoofing"]) == 0
     output = capsys.readouterr().out

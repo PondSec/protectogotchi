@@ -12,9 +12,30 @@ from protectogotchi.agent import ProtectogotchiAgent
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.knowledge import list_topics
 from protectogotchi.models import ScanResult, utc_now
+from protectogotchi.network_map import NetworkMapper
 from protectogotchi.state import StateStore
 from protectogotchi.tools import list_tools
 from protectogotchi.topology import NetworkTopology, TopologyBuilder
+
+
+WEB_MODES: dict[str, dict[str, object]] = {
+    "learn": {
+        "label": "Learn",
+        "description": "Safely update the baseline when the latest scan is clean enough.",
+    },
+    "watch": {
+        "label": "Watch",
+        "description": "Observe and score without changing the baseline.",
+    },
+    "guard": {
+        "label": "Guard",
+        "description": "Observe, learn safely, and execute response planning. Active blocks still require explicit config.",
+    },
+    "pause": {
+        "label": "Pause",
+        "description": "Keep the web UI open without running background scans.",
+    },
+}
 
 
 def dashboard_html() -> str:
@@ -50,6 +71,21 @@ def dashboard_html() -> str:
     .state { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
     .muted { color: var(--muted); }
     .live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
+    .headerActions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+    .modeSwitch, .tabs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .modeSwitch button, .tabs button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      padding: 8px 10px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .modeSwitch button.active, .tabs button.active {
+      border-color: var(--ink);
+      background: rgba(255, 255, 255, .48);
+    }
     .dot { width: 8px; height: 8px; background: var(--strong); display: inline-block; }
     .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 18px; }
     .metric span { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
@@ -63,6 +99,9 @@ def dashboard_html() -> str:
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; line-height: 1.45; }
     .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
+    .tabs { position: sticky; top: 0; padding: 14px 0; background: var(--bg); border-bottom: 1px solid var(--line); z-index: 1; }
+    .panel { display: none; }
+    .panel.active { display: block; }
     .finding { padding: 10px 0; border-bottom: 1px solid var(--line); }
     .finding strong { display: block; }
     .severity-critical, .severity-high { color: var(--danger); }
@@ -80,7 +119,15 @@ def dashboard_html() -> str:
       <h1>Protectogotchi</h1>
       <div class="muted">Local defensive network AI · realtime local view</div>
     </div>
-    <div class="live"><span class="dot"></span><span id="liveText">starting</span></div>
+    <div class="headerActions">
+      <div class="modeSwitch" aria-label="Mode">
+        <button data-mode="learn" class="active" onclick="setMode('learn')">Learn</button>
+        <button data-mode="watch" onclick="setMode('watch')">Watch</button>
+        <button data-mode="guard" onclick="setMode('guard')">Guard</button>
+        <button data-mode="pause" onclick="setMode('pause')">Pause</button>
+      </div>
+      <div class="live"><span class="dot"></span><span id="liveText">starting</span></div>
+    </div>
   </header>
   <main>
     <aside class="side">
@@ -95,25 +142,39 @@ def dashboard_html() -> str:
       </div>
     </aside>
     <div class="work">
-      <div class="band">
-        <h2>Network</h2>
+      <nav class="tabs" aria-label="Views">
+        <button data-tab="overview" class="active" onclick="switchTab('overview')">Overview</button>
+        <button data-tab="network" onclick="switchTab('network')">Network</button>
+        <button data-tab="findings" onclick="switchTab('findings')">Findings</button>
+        <button data-tab="devices" onclick="switchTab('devices')">Devices</button>
+        <button data-tab="arsenal" onclick="switchTab('arsenal')">Arsenal</button>
+      </nav>
+      <div class="band panel active" data-panel="overview">
+        <h2>Overview</h2>
         <div class="split">
           <pre id="network">loading...</pre>
           <pre id="topology">loading...</pre>
         </div>
       </div>
-      <div class="band">
+      <div class="band panel" data-panel="network">
+        <h2>Network</h2>
+        <div class="split">
+          <pre id="networkDetail">loading...</pre>
+          <pre id="coverage">loading...</pre>
+        </div>
+      </div>
+      <div class="band panel" data-panel="findings">
         <h2>Findings</h2>
         <div id="findings">loading...</div>
       </div>
-      <div class="band">
+      <div class="band panel" data-panel="devices">
         <h2>Known Devices</h2>
         <table>
           <thead><tr><th>MAC</th><th>IPs</th><th>Seen</th><th>Last seen</th></tr></thead>
           <tbody id="devices"></tbody>
         </table>
       </div>
-      <div class="band">
+      <div class="band panel" data-panel="arsenal">
         <h2>Arsenal</h2>
         <div class="split">
           <pre id="tools">loading...</pre>
@@ -145,7 +206,8 @@ def dashboard_html() -> str:
 
       document.getElementById("face").textContent = faces[faceState] || faces.idle;
       document.getElementById("state").textContent = faceState.replace("-", " ");
-      document.getElementById("mood").textContent = live.error || (scan.learned ? "learning safely" : "watching without baseline change");
+      document.getElementById("mood").textContent = live.error || live.mode_description || (scan.learned ? "learning safely" : "watching without baseline change");
+      renderMode(live.mode || "learn", live.mode_description || "");
       document.getElementById("risk").textContent = scan.risk_score ?? "-";
       document.getElementById("risk").className = (scan.risk_score || 0) >= 70 ? "risk-high" : ((scan.risk_score || 0) >= 35 ? "risk-mid" : "risk-low");
       document.getElementById("level").textContent = state.level ?? "-";
@@ -156,11 +218,16 @@ def dashboard_html() -> str:
       document.getElementById("network").textContent = [
         "ssid: " + ((snapshot.wifi || {}).ssid || "unknown"),
         "gateway: " + (snapshot.default_gateway || "unknown"),
+        "mode: " + (live.mode || "learn"),
+        "active interfaces: " + (((live.network_map || {}).summary || {}).active_interfaces ?? "-"),
+        "local subnets: " + (((live.network_map || {}).subnets || []).join(", ") || "none"),
         "interfaces: " + ((snapshot.interfaces || []).length),
         "routes: " + ((snapshot.routes || []).length),
         "connections: " + ((snapshot.connections || []).length)
       ].join("\\n");
       document.getElementById("topology").textContent = JSON.stringify(live.topology_summary || {}, null, 2);
+      document.getElementById("networkDetail").textContent = JSON.stringify((live.network_map || {}).summary || {}, null, 2);
+      document.getElementById("coverage").textContent = ((live.network_map || {}).coverage || []).join("\\n");
 
       renderFindings(scan.findings || []);
       renderDevices(live.devices || []);
@@ -192,6 +259,21 @@ def dashboard_html() -> str:
         </tr>
       `).join("");
     }
+    function switchTab(tab) {
+      document.querySelectorAll("[data-tab]").forEach(button => button.classList.toggle("active", button.dataset.tab === tab));
+      document.querySelectorAll("[data-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.panel === tab));
+    }
+    function renderMode(mode, description) {
+      document.querySelectorAll("[data-mode]").forEach(button => button.classList.toggle("active", button.dataset.mode === mode));
+    }
+    async function setMode(mode) {
+      await fetch("/api/mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode })
+      });
+      await refresh();
+    }
     refresh().catch(error => {
       document.getElementById("liveText").textContent = String(error);
     });
@@ -219,6 +301,7 @@ class LiveWebState:
         self.stop_event = threading.Event()
         self.thread = threading.Thread(target=self._loop, name="protectogotchi-web-scan", daemon=True)
         self.payload: dict | None = None
+        self.mode = "learn"
 
     def start(self) -> None:
         self.thread.start()
@@ -233,27 +316,51 @@ class LiveWebState:
                 return {
                     "updated_at": utc_now(),
                     "error": "waiting for first scan",
+                    "mode": self.mode,
+                    "mode_description": WEB_MODES[self.mode]["description"],
                     "state": _state_summary(self.config),
                     "scan": None,
                     "topology_summary": {},
+                    "network_map": {},
                     "devices": [],
                     "tools": [asdict(tool) for tool in list_tools()],
                     "knowledge": [asdict(topic) for topic in list_topics()],
                 }
             return self.payload
 
-    def refresh_once(self, learn: bool = True) -> dict:
+    def set_mode(self, mode: str) -> dict:
+        if mode not in WEB_MODES:
+            raise ValueError(f"Unknown web mode: {mode}")
+        with self.lock:
+            self.mode = mode
+            if self.payload is not None:
+                self.payload["mode"] = mode
+                self.payload["mode_description"] = WEB_MODES[mode]["description"]
+                return self.payload
+        return self.current()
+
+    def refresh_once(self, learn: bool | None = None) -> dict:
+        with self.lock:
+            mode = self.mode
+        if mode == "pause" and learn is None:
+            return self.current()
+
+        learn_flag = learn if learn is not None else mode in {"learn", "guard"}
+        execute_actions = mode == "guard"
         try:
-            result = self.agent.scan(learn=learn)
+            result = self.agent.scan(learn=learn_flag, execute_actions=execute_actions)
             topology = TopologyBuilder().build(result.snapshot)
-            payload = _live_payload(self.config, result, topology)
+            payload = _live_payload(self.config, result, topology, mode)
         except Exception as exc:  # pragma: no cover - defensive runtime guard
             payload = {
                 "updated_at": utc_now(),
                 "error": str(exc),
+                "mode": mode,
+                "mode_description": WEB_MODES[mode]["description"],
                 "state": _state_summary(self.config),
                 "scan": None,
                 "topology_summary": {},
+                "network_map": {},
                 "devices": [],
                 "tools": [asdict(tool) for tool in list_tools()],
                 "knowledge": [asdict(topic) for topic in list_topics()],
@@ -264,7 +371,7 @@ class LiveWebState:
 
     def _loop(self) -> None:
         while not self.stop_event.is_set():
-            self.refresh_once(learn=True)
+            self.refresh_once()
             self.stop_event.wait(self.scan_interval)
 
 
@@ -272,14 +379,18 @@ def _live_payload(
     config: ProtectogotchiConfig,
     result: ScanResult,
     topology: NetworkTopology,
+    mode: str = "learn",
 ) -> dict:
     state = StateStore(config.state_dir).load()
     return {
         "updated_at": utc_now(),
+        "mode": mode,
+        "mode_description": WEB_MODES[mode]["description"],
         "state": _state_summary(config),
         "scan": result.to_dict(),
         "topology_summary": topology.summary,
         "topology": topology.to_dict(),
+        "network_map": NetworkMapper().build(result.snapshot).to_dict(),
         "devices": sorted(state.devices.values(), key=lambda item: item.get("mac", "")),
         "tools": [asdict(tool) for tool in list_tools()],
         "knowledge": [asdict(topic) for topic in list_topics()],
@@ -358,6 +469,20 @@ def _handler(
                 return
             if parsed.path == "/api/knowledge":
                 self._send_json([asdict(topic) for topic in list_topics()])
+                return
+            self._send_json({"error": "not found"}, status=HTTPStatus.NOT_FOUND)
+
+        def do_POST(self) -> None:
+            parsed = urlparse(self.path)
+            if parsed.path == "/api/mode":
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    raw = self.rfile.read(length) if length else b"{}"
+                    payload = json.loads(raw.decode("utf-8"))
+                    mode = str(payload.get("mode", ""))
+                    self._send_json(live_state.set_mode(mode))
+                except ValueError as exc:
+                    self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
                 return
             self._send_json({"error": "not found"}, status=HTTPStatus.NOT_FOUND)
 

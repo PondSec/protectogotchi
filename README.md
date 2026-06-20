@@ -53,6 +53,7 @@ protectogotchi snapshot
 # Build a passive topology from interfaces, routes, gateways, subnets, and devices.
 protectogotchi topology
 protectogotchi topology --json
+protectogotchi map
 
 # Run realtime local web status/API. Binds to localhost by default.
 protectogotchi web --host 127.0.0.1 --port 8765 --scan-interval 3
