@@ -58,6 +58,7 @@ class ProtectogotchiState:
     known_route_keys: list[str] = field(default_factory=list)
     known_subnets: list[str] = field(default_factory=list)
     known_interfaces: dict[str, dict[str, Any]] = field(default_factory=dict)
+    finding_history: list[dict[str, Any]] = field(default_factory=list)
 
     def known_macs(self) -> set[str]:
         return set(self.devices)
@@ -70,6 +71,19 @@ class ProtectogotchiState:
         self.xp += 1
         self.xp += sum(max(1, finding.score // 10) for finding in findings)
         self.level = max(1, int(math.sqrt(self.xp / 25)) + 1)
+        for finding in findings:
+            self.finding_history.append(
+                {
+                    "seen_at": utc_now(),
+                    "code": finding.code,
+                    "title": finding.title,
+                    "severity": finding.severity,
+                    "description": finding.description,
+                    "evidence": finding.evidence,
+                    "recommended_action": finding.recommended_action,
+                }
+            )
+        self.finding_history = self.finding_history[-200:]
         self.updated_at = utc_now()
 
     def learn(self, snapshot: NetworkSnapshot) -> None:

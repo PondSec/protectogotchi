@@ -31,6 +31,10 @@ WEB_MODES: dict[str, dict[str, object]] = {
         "label": "Guard",
         "description": "Observe, learn safely, and execute response planning. Active blocks still require explicit config.",
     },
+    "god": {
+        "label": "God",
+        "description": "Fully autonomous defensive mode after explicit activation. Protectogotchi decides and executes supported response actions without per-action prompts. Covert ARP/MitM is not part of this mode.",
+    },
     "pause": {
         "label": "Pause",
         "description": "Keep the web UI open without running background scans.",
@@ -98,6 +102,14 @@ def dashboard_html() -> str:
     th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; line-height: 1.45; }
+    svg { width: 100%; min-height: 360px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .nodeLabel { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: var(--ink); }
+    .nodeMeta { font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--muted); }
+    .link { stroke: #9bacbd; stroke-width: 1.2; }
+    .node { fill: #ffffff; stroke: var(--line); stroke-width: 1.3; }
+    .node.gateway, .node.default-gateway { stroke: var(--strong); stroke-width: 2; }
+    .node.host { fill: #dfeeea; }
+    .node.subnet { fill: #e4ebf5; }
     .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
     .tabs { position: sticky; top: 0; padding: 14px 0; background: var(--bg); border-bottom: 1px solid var(--line); z-index: 1; }
     .panel { display: none; }
@@ -124,6 +136,7 @@ def dashboard_html() -> str:
         <button data-mode="learn" class="active" onclick="setMode('learn')">Learn</button>
         <button data-mode="watch" onclick="setMode('watch')">Watch</button>
         <button data-mode="guard" onclick="setMode('guard')">Guard</button>
+        <button data-mode="god" onclick="setMode('god')">God Mode</button>
         <button data-mode="pause" onclick="setMode('pause')">Pause</button>
       </div>
       <div class="live"><span class="dot"></span><span id="liveText">starting</span></div>
@@ -151,6 +164,7 @@ def dashboard_html() -> str:
       </nav>
       <div class="band panel active" data-panel="overview">
         <h2>Overview</h2>
+        <svg id="networkGraph" role="img" aria-label="Logical network map"></svg>
         <div class="split">
           <pre id="network">loading...</pre>
           <pre id="topology">loading...</pre>
@@ -166,6 +180,8 @@ def dashboard_html() -> str:
       <div class="band panel" data-panel="findings">
         <h2>Findings</h2>
         <div id="findings">loading...</div>
+        <h2 style="margin-top:22px">Recent History</h2>
+        <div id="history">loading...</div>
       </div>
       <div class="band panel" data-panel="devices">
         <h2>Known Devices</h2>
@@ -228,8 +244,10 @@ def dashboard_html() -> str:
       document.getElementById("topology").textContent = JSON.stringify(live.topology_summary || {}, null, 2);
       document.getElementById("networkDetail").textContent = JSON.stringify((live.network_map || {}).summary || {}, null, 2);
       document.getElementById("coverage").textContent = ((live.network_map || {}).coverage || []).join("\\n");
+      renderGraph((live.network_map || {}).graph || { nodes: [], edges: [] });
 
       renderFindings(scan.findings || []);
+      renderHistory(live.finding_history || []);
       renderDevices(live.devices || []);
       document.getElementById("tools").textContent = (live.tools || []).map(t => t.name + " [" + t.status + "]").join("\\n");
       document.getElementById("knowledge").textContent = (live.knowledge || []).map(t => t.name + " (" + t.domain + ")").join("\\n");
@@ -248,6 +266,20 @@ def dashboard_html() -> str:
         </div>
       `).join("");
     }
+    function renderHistory(history) {
+      const target = document.getElementById("history");
+      if (!history.length) {
+        target.innerHTML = "<span class='muted'>No finding history yet.</span>";
+        return;
+      }
+      target.innerHTML = history.slice(-12).reverse().map(f => `
+        <div class="finding">
+          <strong class="severity-${f.severity}">${f.seen_at} · [${f.severity}] ${f.title}</strong>
+          <span>${f.description}</span><br>
+          <code>${JSON.stringify(f.evidence || {})}</code>
+        </div>
+      `).join("");
+    }
     function renderDevices(devices) {
       const target = document.getElementById("devices");
       target.innerHTML = devices.map(d => `
@@ -259,6 +291,70 @@ def dashboard_html() -> str:
         </tr>
       `).join("");
     }
+    function renderGraph(graph) {
+      const svg = document.getElementById("networkGraph");
+      const nodes = graph.nodes || [];
+      const edges = graph.edges || [];
+      const width = Math.max(760, svg.clientWidth || 760);
+      const byId = new Map(nodes.map(n => [n.id, n]));
+      const columns = {
+        host: 70,
+        interface: 230,
+        subnet: 410,
+        gateway: 610,
+        "default-gateway": 610,
+        endpoint: 610,
+        "local-host": 610,
+        "infrastructure-candidate": 610
+      };
+      const grouped = {};
+      for (const node of nodes) {
+        const kind = node.kind || "endpoint";
+        grouped[kind] = grouped[kind] || [];
+        grouped[kind].push(node);
+      }
+      const ySlots = {};
+      const ordered = ["host", "interface", "subnet", "default-gateway", "gateway", "infrastructure-candidate", "endpoint", "local-host"];
+      for (const kind of ordered) {
+        const items = grouped[kind] || [];
+        items.forEach((node, index) => {
+          const x = columns[kind] || 610;
+          const spread = Math.max(1, items.length);
+          const y = 60 + index * Math.max(54, 270 / spread);
+          ySlots[node.id] = { x, y };
+        });
+      }
+      const height = Math.max(360, ...Object.values(ySlots).map(p => p.y + 45));
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      const edgeSvg = edges.map(edge => {
+        const source = ySlots[edge.source];
+        const target = ySlots[edge.target];
+        if (!source || !target) return "";
+        return `<line class="link" x1="${source.x + 60}" y1="${source.y}" x2="${target.x - 60}" y2="${target.y}"></line>`;
+      }).join("");
+      const nodeSvg = nodes.map(node => {
+        const pos = ySlots[node.id];
+        if (!pos) return "";
+        const kind = node.kind || "endpoint";
+        const label = escapeHtml(node.label || node.id);
+        const meta = escapeHtml([node.ip, node.mac].filter(Boolean).join(" · "));
+        return `
+          <g>
+            <rect class="node ${kind}" x="${pos.x - 58}" y="${pos.y - 20}" width="116" height="40"></rect>
+            <text class="nodeLabel" x="${pos.x - 50}" y="${pos.y - 3}">${label}</text>
+            <text class="nodeMeta" x="${pos.x - 50}" y="${pos.y + 12}">${meta}</text>
+          </g>
+        `;
+      }).join("");
+      svg.innerHTML = edgeSvg + nodeSvg;
+    }
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
     function switchTab(tab) {
       document.querySelectorAll("[data-tab]").forEach(button => button.classList.toggle("active", button.dataset.tab === tab));
       document.querySelectorAll("[data-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.panel === tab));
@@ -267,10 +363,16 @@ def dashboard_html() -> str:
       document.querySelectorAll("[data-mode]").forEach(button => button.classList.toggle("active", button.dataset.mode === mode));
     }
     async function setMode(mode) {
+      let body = { mode };
+      if (mode === "god") {
+        const phrase = window.prompt('Type ACTIVATE GOD MODE to enable fully autonomous defensive mode.');
+        if (phrase !== "ACTIVATE GOD MODE") return;
+        body.confirm = phrase;
+      }
       await fetch("/api/mode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode })
+        body: JSON.stringify(body)
       });
       await refresh();
     }
@@ -323,14 +425,17 @@ class LiveWebState:
                     "topology_summary": {},
                     "network_map": {},
                     "devices": [],
+                    "finding_history": [],
                     "tools": [asdict(tool) for tool in list_tools()],
                     "knowledge": [asdict(topic) for topic in list_topics()],
                 }
             return self.payload
 
-    def set_mode(self, mode: str) -> dict:
+    def set_mode(self, mode: str, confirmation: str | None = None) -> dict:
         if mode not in WEB_MODES:
             raise ValueError(f"Unknown web mode: {mode}")
+        if mode == "god" and confirmation != "ACTIVATE GOD MODE":
+            raise ValueError("God Mode requires typed confirmation: ACTIVATE GOD MODE")
         with self.lock:
             self.mode = mode
             if self.payload is not None:
@@ -346,7 +451,7 @@ class LiveWebState:
             return self.current()
 
         learn_flag = learn if learn is not None else mode in {"learn", "guard"}
-        execute_actions = mode == "guard"
+        execute_actions = mode in {"guard", "god"}
         try:
             result = self.agent.scan(learn=learn_flag, execute_actions=execute_actions)
             topology = TopologyBuilder().build(result.snapshot)
@@ -362,6 +467,7 @@ class LiveWebState:
                 "topology_summary": {},
                 "network_map": {},
                 "devices": [],
+                "finding_history": [],
                 "tools": [asdict(tool) for tool in list_tools()],
                 "knowledge": [asdict(topic) for topic in list_topics()],
             }
@@ -392,6 +498,7 @@ def _live_payload(
         "topology": topology.to_dict(),
         "network_map": NetworkMapper().build(result.snapshot).to_dict(),
         "devices": sorted(state.devices.values(), key=lambda item: item.get("mac", "")),
+        "finding_history": state.finding_history[-50:],
         "tools": [asdict(tool) for tool in list_tools()],
         "knowledge": [asdict(topic) for topic in list_topics()],
     }
@@ -480,7 +587,8 @@ def _handler(
                     raw = self.rfile.read(length) if length else b"{}"
                     payload = json.loads(raw.decode("utf-8"))
                     mode = str(payload.get("mode", ""))
-                    self._send_json(live_state.set_mode(mode))
+                    confirmation = payload.get("confirm")
+                    self._send_json(live_state.set_mode(mode, confirmation=confirmation))
                 except ValueError as exc:
                     self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
                 return

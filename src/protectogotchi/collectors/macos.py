@@ -111,6 +111,7 @@ class MacOSCollector(Collector):
                     ip=match.group("ip"),
                     mac=mac,
                     interface=match.group("iface"),
+                    hostname=self._hostname_for_ip(match.group("ip")),
                     source="arp",
                 )
             )
@@ -249,3 +250,11 @@ class MacOSCollector(Collector):
         except ValueError:
             return False
         return True
+
+    def _hostname_for_ip(self, ip: str) -> str | None:
+        output = self._run(["dscacheutil", "-q", "host", "-a", "ip_address", ip])
+        for line in output.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("name:"):
+                return stripped.split(":", 1)[1].strip()
+        return None

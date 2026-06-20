@@ -17,6 +17,11 @@ traffic between other devices. In that mode it can:
 It should not secretly ARP-spoof or force a MitM position. That behavior is
 fragile and resembles the attack class it is supposed to detect.
 
+Active enforcement is therefore an owner-responsibility feature. Use it only in
+your own network or an explicitly authorized lab. Once an active mode is armed,
+Protectogotchi may block, quarantine, or route traffic through supported
+enforcement mechanisms according to its local policy.
+
 ## Supported direction
 
 The safe path is explicit owner-controlled enforcement:
@@ -32,3 +37,10 @@ The safe path is explicit owner-controlled enforcement:
 The current MVP implements observer mode, local telemetry, anomaly scoring,
 topology mapping, dry-run response planning, and a local web UI/API. Network-wide
 prevention is planned for the Pi/router/controller phases.
+
+## God Mode
+
+God Mode is an explicitly armed autonomous defensive mode. After activation,
+Protectogotchi may decide and execute supported defensive response actions
+without per-action prompts. It still uses owner-controlled enforcement points
+only. It does not perform covert ARP spoofing or MitM takeover.

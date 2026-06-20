@@ -1,4 +1,4 @@
-from protectogotchi.models import Device, InterfaceInfo, NetworkSnapshot, Route, utc_now
+from protectogotchi.models import Connection, Device, InterfaceInfo, NetworkSnapshot, Route, utc_now
 from protectogotchi.network_map import NetworkMapper
 
 
@@ -15,6 +15,16 @@ def test_network_map_categorizes_interfaces_routes_and_devices():
         routes=[
             Route(destination="default", gateway="192.168.10.1", interface="en0"),
             Route(destination="10.42.0.0/16", gateway="192.168.10.254", interface="en0"),
+        ],
+        connections=[
+            Connection(
+                protocol="tcp",
+                local_address="192.168.10.10",
+                local_port=50000,
+                remote_address="172.16.5.20",
+                remote_port=443,
+                state="ESTABLISHED",
+            )
         ],
         devices=[
             Device(ip="192.168.10.1", mac="aa:aa:aa:aa:aa:aa", interface="en0"),
@@ -35,4 +45,8 @@ def test_network_map_categorizes_interfaces_routes_and_devices():
     assert categories["192.168.10.1"] == "default-gateway"
     assert categories["192.168.10.10"] == "local-host"
     assert network_map.summary["routed_networks"] == 1
+    assert network_map.summary["observed_remote_subnets"] == 1
+    assert "172.16.5.0/24" in network_map.observed_remote_subnets
+    assert network_map.graph["nodes"]
+    assert network_map.graph["edges"]
     assert "10.42.0.0/16" in " ".join(network_map.coverage)

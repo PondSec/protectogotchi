@@ -98,6 +98,12 @@ enforcement point: router/controller integration, managed AP/switch quarantine,
 endpoint firewall agents, or a Raspberry Pi running as an explicit gateway/AP or
 transparent bridge.
 
+Use active enforcement only in your own network or in an explicitly authorized
+lab. You are responsible for the effects of blocking, quarantine, routing, or
+firewall actions. A client-only Protectogotchi can detect and protect its own
+host, but it cannot reliably stop traffic between other devices unless it is
+deployed as, or connected to, a real enforcement point.
+
 Important: Protectogotchi cannot reliably prevent all network traffic unless it
 controls an enforcement point such as the router/firewall/AP, a managed switch,
 an endpoint firewall, or an inline Pi gateway/bridge. It does not use covert

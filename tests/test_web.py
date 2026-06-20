@@ -11,6 +11,8 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "setInterval" in html
     assert "data-tab=\"overview\"" in html
     assert "data-mode=\"guard\"" in html
+    assert "data-mode=\"god\"" in html
+    assert "ACTIVATE GOD MODE" in html
     assert "tools" in html
     assert "Protectogotchi" in html
     assert "border-radius" not in html
@@ -48,6 +50,7 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
     assert payload["scan"]["face_state"] == "happy"
     assert payload["topology_summary"]["gateway"] == 1
     assert "network_map" in payload
+    assert "finding_history" in payload
     assert len(payload["devices"]) == 1
 
 
@@ -64,3 +67,19 @@ def test_live_web_state_mode_switch_without_thread(tmp_path):
         assert "Unknown web mode" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_live_web_state_god_mode_requires_confirmation(tmp_path):
+    from protectogotchi.config import ProtectogotchiConfig
+
+    live = LiveWebState(ProtectogotchiConfig(state_dir=tmp_path), collector_name=None, scan_interval=1)
+    try:
+        live.set_mode("god")
+    except ValueError as exc:
+        assert "ACTIVATE GOD MODE" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+    payload = live.set_mode("god", confirmation="ACTIVATE GOD MODE")
+    assert payload["mode"] == "god"
+    assert "MitM" in payload["mode_description"]

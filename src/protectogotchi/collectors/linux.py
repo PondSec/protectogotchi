@@ -74,7 +74,15 @@ class LinuxCollector(Collector):
             if not is_relevant_neighbor(ip, mac):
                 continue
             iface = parts[parts.index("dev") + 1]
-            devices.append(Device(ip=ip, mac=mac, interface=iface, source="ip-neigh"))
+            devices.append(
+                Device(
+                    ip=ip,
+                    mac=mac,
+                    interface=iface,
+                    hostname=self._hostname_for_ip(ip),
+                    source="ip-neigh",
+                )
+            )
         return devices
 
     def _connections(self) -> list[Connection]:
@@ -162,3 +170,10 @@ class LinuxCollector(Collector):
             return int(value)
         except ValueError:
             return None
+
+    def _hostname_for_ip(self, ip: str) -> str | None:
+        output = self._run(["getent", "hosts", ip])
+        parts = output.split()
+        if len(parts) >= 2:
+            return parts[1]
+        return None
