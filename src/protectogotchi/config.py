@@ -8,6 +8,15 @@ from typing import Any, Literal
 
 
 ResponseMode = Literal["dry-run", "active"]
+DeploymentMode = Literal[
+    "observer",
+    "local-host-firewall",
+    "router-controller",
+    "inline-gateway",
+    "transparent-bridge",
+    "managed-ap-or-switch",
+    "endpoint-agent",
+]
 
 
 @dataclass
@@ -19,6 +28,7 @@ class ProtectogotchiConfig:
     high_zscore_threshold: float = 6.0
     autolearn_max_score: int = 34
     response_mode: ResponseMode = "dry-run"
+    deployment_mode: DeploymentMode = "observer"
     allow_active_blocking: bool = False
     notify_on_medium: bool = True
 
@@ -36,6 +46,19 @@ class ProtectogotchiConfig:
         response_mode = os.environ.get("PROTECTOGOTCHI_RESPONSE_MODE")
         if response_mode in {"dry-run", "active"}:
             config.response_mode = response_mode  # type: ignore[assignment]
+
+        deployment_mode = os.environ.get("PROTECTOGOTCHI_DEPLOYMENT_MODE")
+        valid_modes = {
+            "observer",
+            "local-host-firewall",
+            "router-controller",
+            "inline-gateway",
+            "transparent-bridge",
+            "managed-ap-or-switch",
+            "endpoint-agent",
+        }
+        if deployment_mode in valid_modes:
+            config.deployment_mode = deployment_mode  # type: ignore[assignment]
 
         return config
 

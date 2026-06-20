@@ -44,3 +44,14 @@ God Mode is an explicitly armed autonomous defensive mode. After activation,
 Protectogotchi may decide and execute supported defensive response actions
 without per-action prompts. It still uses owner-controlled enforcement points
 only. It does not perform covert ARP spoofing or MitM takeover.
+
+God Mode is intentionally honest about placement:
+
+- Observer/client-only: detection, alerting, baseline learning, response
+  planning, and host-local protection only.
+- Local host firewall or endpoint agent: autonomous protection for that host.
+- Router/controller, managed AP/switch, inline gateway, or transparent bridge:
+  possible network-wide autonomous prevention.
+
+Use God Mode only in your own network or an explicitly authorized lab, at your
+own responsibility.

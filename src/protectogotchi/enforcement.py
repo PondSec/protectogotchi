@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from protectogotchi.config import ProtectogotchiConfig
+
 
 @dataclass(frozen=True)
 class EnforcementMode:
@@ -127,3 +129,30 @@ def get_enforcement_mode(name: str) -> EnforcementMode | None:
         if mode.name == name:
             return mode
     return None
+
+
+NETWORK_WIDE_MODES = {
+    "router-controller",
+    "inline-gateway",
+    "transparent-bridge",
+    "managed-ap-or-switch",
+}
+
+
+def god_mode_readiness(config: ProtectogotchiConfig) -> dict[str, object]:
+    mode = get_enforcement_mode(config.deployment_mode)
+    network_wide = config.deployment_mode in NETWORK_WIDE_MODES
+    host_wide = config.deployment_mode in {"local-host-firewall", "endpoint-agent"}
+    active = config.active_response_enabled
+    return {
+        "deployment_mode": config.deployment_mode,
+        "active_response_enabled": active,
+        "can_prevent_network_wide": network_wide and active,
+        "can_prevent_this_host": (host_wide or network_wide) and active,
+        "mode_summary": mode.summary if mode else "Unknown deployment mode.",
+        "warning": (
+            "Client-only observer mode cannot reliably stop traffic between other devices. "
+            "Network-wide autonomous prevention requires router/controller, inline gateway, "
+            "transparent bridge, managed AP/switch, or endpoint enforcement."
+        ),
+    }

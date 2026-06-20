@@ -104,6 +104,13 @@ firewall actions. A client-only Protectogotchi can detect and protect its own
 host, but it cannot reliably stop traffic between other devices unless it is
 deployed as, or connected to, a real enforcement point.
 
+God Mode is at your own risk and only for your own or explicitly authorized
+networks. It lets Protectogotchi act autonomously through supported defensive
+enforcement mechanisms after an explicit activation warning. As a client-only
+observer, God Mode still cannot provide network-wide prevention; for that, run
+Protectogotchi as a gateway/AP/transparent bridge or connect it to a
+router/firewall/AP/switch controller or endpoint agent.
+
 Important: Protectogotchi cannot reliably prevent all network traffic unless it
 controls an enforcement point such as the router/firewall/AP, a managed switch,
 an endpoint firewall, or an inline Pi gateway/bridge. It does not use covert

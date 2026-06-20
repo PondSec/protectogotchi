@@ -13,6 +13,7 @@ def test_dashboard_html_references_local_api_endpoints():
     assert "data-mode=\"guard\"" in html
     assert "data-mode=\"god\"" in html
     assert "ACTIVATE GOD MODE" in html
+    assert "does not enable covert ARP/MitM" in html
     assert "tools" in html
     assert "Protectogotchi" in html
     assert "border-radius" not in html
@@ -51,6 +52,7 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
     assert payload["topology_summary"]["gateway"] == 1
     assert "network_map" in payload
     assert "finding_history" in payload
+    assert "god_mode_readiness" in payload
     assert len(payload["devices"]) == 1
 
 
@@ -82,4 +84,4 @@ def test_live_web_state_god_mode_requires_confirmation(tmp_path):
 
     payload = live.set_mode("god", confirmation="ACTIVATE GOD MODE")
     assert payload["mode"] == "god"
-    assert "MitM" in payload["mode_description"]
+    assert "enforcement point" in payload["mode_description"]

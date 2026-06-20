@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 
 from protectogotchi.agent import ProtectogotchiAgent
 from protectogotchi.config import ProtectogotchiConfig
+from protectogotchi.enforcement import god_mode_readiness
 from protectogotchi.knowledge import list_topics
 from protectogotchi.models import ScanResult, utc_now
 from protectogotchi.network_map import NetworkMapper
@@ -33,7 +34,7 @@ WEB_MODES: dict[str, dict[str, object]] = {
     },
     "god": {
         "label": "God",
-        "description": "Fully autonomous defensive mode after explicit activation. Protectogotchi decides and executes supported response actions without per-action prompts. Covert ARP/MitM is not part of this mode.",
+        "description": "Fully autonomous defensive mode after explicit activation. Protectogotchi decides and executes supported response actions without per-action prompts. Network-wide prevention requires a real enforcement point; covert ARP/MitM is not part of this mode.",
     },
     "pause": {
         "label": "Pause",
@@ -250,7 +251,12 @@ def dashboard_html() -> str:
       renderHistory(live.finding_history || []);
       renderDevices(live.devices || []);
       document.getElementById("tools").textContent = (live.tools || []).map(t => t.name + " [" + t.status + "]").join("\\n");
-      document.getElementById("knowledge").textContent = (live.knowledge || []).map(t => t.name + " (" + t.domain + ")").join("\\n");
+      document.getElementById("knowledge").textContent = [
+        "God Mode readiness:",
+        JSON.stringify(live.god_mode_readiness || {}, null, 2),
+        "",
+        ...(live.knowledge || []).map(t => t.name + " (" + t.domain + ")")
+      ].join("\\n");
     }
     function renderFindings(findings) {
       const target = document.getElementById("findings");
@@ -365,7 +371,7 @@ def dashboard_html() -> str:
     async function setMode(mode) {
       let body = { mode };
       if (mode === "god") {
-        const phrase = window.prompt('Type ACTIVATE GOD MODE to enable fully autonomous defensive mode.');
+        const phrase = window.prompt('God Mode is autonomous and acts at your own responsibility. Network-wide prevention requires a real enforcement point such as router-controller, inline-gateway, transparent-bridge, managed AP/switch, or endpoint agent. It does not enable covert ARP/MitM. Type ACTIVATE GOD MODE to continue.');
         if (phrase !== "ACTIVATE GOD MODE") return;
         body.confirm = phrase;
       }
@@ -426,6 +432,7 @@ class LiveWebState:
                     "network_map": {},
                     "devices": [],
                     "finding_history": [],
+                    "god_mode_readiness": god_mode_readiness(self.config),
                     "tools": [asdict(tool) for tool in list_tools()],
                     "knowledge": [asdict(topic) for topic in list_topics()],
                 }
@@ -468,6 +475,7 @@ class LiveWebState:
                 "network_map": {},
                 "devices": [],
                 "finding_history": [],
+                "god_mode_readiness": god_mode_readiness(self.config),
                 "tools": [asdict(tool) for tool in list_tools()],
                 "knowledge": [asdict(topic) for topic in list_topics()],
             }
@@ -499,6 +507,7 @@ def _live_payload(
         "network_map": NetworkMapper().build(result.snapshot).to_dict(),
         "devices": sorted(state.devices.values(), key=lambda item: item.get("mac", "")),
         "finding_history": state.finding_history[-50:],
+        "god_mode_readiness": god_mode_readiness(config),
         "tools": [asdict(tool) for tool in list_tools()],
         "knowledge": [asdict(topic) for topic in list_topics()],
     }
