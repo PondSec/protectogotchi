@@ -40,6 +40,17 @@ MODES: tuple[EnforcementMode, ...] = (
         current_status="planned-safe-executor",
     ),
     EnforcementMode(
+        name="dns-guard",
+        scope="network-wide-dns-control",
+        can_prevent=True,
+        summary=(
+            "Protectogotchi acts as the network DNS guard or controls a DNS sinkhole. "
+            "This can block malicious domains for clients that use it through router DHCP."
+        ),
+        requirements=("router DHCP can advertise Protectogotchi DNS", "DNS sinkhole service"),
+        current_status="planned",
+    ),
+    EnforcementMode(
         name="router-controller",
         scope="network-wide-control-plane",
         can_prevent=True,
@@ -132,6 +143,7 @@ def get_enforcement_mode(name: str) -> EnforcementMode | None:
 
 
 NETWORK_WIDE_MODES = {
+    "dns-guard",
     "router-controller",
     "inline-gateway",
     "transparent-bridge",
@@ -155,4 +167,60 @@ def god_mode_readiness(config: ProtectogotchiConfig) -> dict[str, object]:
             "Network-wide autonomous prevention requires router/controller, inline gateway, "
             "transparent bridge, managed AP/switch, or endpoint enforcement."
         ),
+        "recommended_next_step": recommended_next_step(config),
     }
+
+
+def recommended_next_step(config: ProtectogotchiConfig) -> str:
+    if config.deployment_mode == "observer":
+        return (
+            "For plug-and-play prevention, choose router-controller if your router/AP is supported, "
+            "or dns-guard if you can set Protectogotchi as DHCP DNS. For full traffic control, use "
+            "inline-gateway or transparent-bridge."
+        )
+    if config.deployment_mode == "dns-guard":
+        return "Configure router DHCP to hand out Protectogotchi as DNS, then enable active mode."
+    if config.deployment_mode == "local-host-firewall":
+        return "Enable active mode to protect this host with the local firewall."
+    if config.deployment_mode in NETWORK_WIDE_MODES:
+        return "Enable active mode only after verifying the enforcement integration controls your own network."
+    return "Install endpoint agents or choose a network-wide enforcement mode for broader protection."
+
+
+def easy_protect_plan(config: ProtectogotchiConfig) -> list[dict[str, object]]:
+    readiness = god_mode_readiness(config)
+    return [
+        {
+            "mode": "observer",
+            "effort": "zero setup",
+            "prevents": False,
+            "summary": "Detect, learn, alert, map, and plan responses from the current client position.",
+        },
+        {
+            "mode": "dns-guard",
+            "effort": "low",
+            "prevents": True,
+            "summary": "Set Protectogotchi as DHCP DNS to block malicious domains for clients using network DNS.",
+        },
+        {
+            "mode": "router-controller",
+            "effort": "low to medium",
+            "prevents": True,
+            "summary": "Use a supported router/AP/firewall API to block or quarantine devices.",
+        },
+        {
+            "mode": "transparent-bridge",
+            "effort": "medium",
+            "prevents": True,
+            "summary": "Place a Pi with two network interfaces inline; no ARP spoofing required.",
+        },
+        {
+            "mode": "inline-gateway",
+            "effort": "medium",
+            "prevents": True,
+            "summary": "Make Protectogotchi the default gateway/AP for full routed enforcement.",
+        },
+        {
+            "current_readiness": readiness,
+        },
+    ]

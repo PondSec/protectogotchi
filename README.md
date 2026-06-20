@@ -68,6 +68,7 @@ protectogotchi knowledge
 protectogotchi knowledge arp-spoofing
 protectogotchi enforcement
 protectogotchi enforcement inline-gateway
+protectogotchi easy-protect
 protectogotchi simulate arp-spoof
 
 # Trust or untrust devices explicitly.
@@ -110,6 +111,17 @@ enforcement mechanisms after an explicit activation warning. As a client-only
 observer, God Mode still cannot provide network-wide prevention; for that, run
 Protectogotchi as a gateway/AP/transparent bridge or connect it to a
 router/firewall/AP/switch controller or endpoint agent.
+
+For end users, the intended easy paths are:
+
+- `dns-guard`: low-friction DNS blocking when the router can advertise
+  Protectogotchi as DNS through DHCP.
+- `router-controller`: use a supported router/AP/firewall API to block or
+  quarantine clients.
+- `transparent-bridge`: place a Pi inline as a real bridge for full traffic
+  visibility without ARP spoofing.
+- `inline-gateway`: make Protectogotchi the router/AP for full routed
+  enforcement.
 
 Important: Protectogotchi cannot reliably prevent all network traffic unless it
 controls an enforcement point such as the router/firewall/AP, a managed switch,

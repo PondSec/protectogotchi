@@ -50,6 +50,8 @@ God Mode is intentionally honest about placement:
 - Observer/client-only: detection, alerting, baseline learning, response
   planning, and host-local protection only.
 - Local host firewall or endpoint agent: autonomous protection for that host.
+- DNS guard: network-wide domain blocking for clients that use Protectogotchi
+  DNS through router DHCP.
 - Router/controller, managed AP/switch, inline gateway, or transparent bridge:
   possible network-wide autonomous prevention.
 

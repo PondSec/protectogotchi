@@ -1,5 +1,6 @@
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.enforcement import (
+    easy_protect_plan,
     get_enforcement_mode,
     god_mode_readiness,
     list_enforcement_modes,
@@ -9,6 +10,7 @@ from protectogotchi.enforcement import (
 def test_enforcement_modes_include_rejected_arp_mitm():
     modes = {mode.name: mode for mode in list_enforcement_modes()}
     assert modes["observer"].can_prevent is False
+    assert modes["dns-guard"].can_prevent is True
     assert modes["lab-simulation"].current_status == "implemented"
     assert modes["inline-gateway"].can_prevent is True
     assert modes["arp-mitm"].current_status == "rejected"
@@ -32,3 +34,10 @@ def test_god_mode_readiness_requires_real_enforcement_for_network_wide():
         )
     )
     assert gateway["can_prevent_network_wide"] is True
+
+
+def test_easy_protect_plan_includes_dns_guard_and_readiness():
+    plan = easy_protect_plan(ProtectogotchiConfig())
+    modes = {item.get("mode") for item in plan if "mode" in item}
+    assert "dns-guard" in modes
+    assert any("current_readiness" in item for item in plan)

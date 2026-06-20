@@ -53,6 +53,7 @@ def test_live_payload_contains_scan_state_and_topology(tmp_path):
     assert "network_map" in payload
     assert "finding_history" in payload
     assert "god_mode_readiness" in payload
+    assert "easy_protect_plan" in payload
     assert len(payload["devices"]) == 1
 
 

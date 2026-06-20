@@ -10,6 +10,7 @@ from typing import Any, Literal
 ResponseMode = Literal["dry-run", "active"]
 DeploymentMode = Literal[
     "observer",
+    "dns-guard",
     "local-host-firewall",
     "router-controller",
     "inline-gateway",
@@ -50,6 +51,7 @@ class ProtectogotchiConfig:
         deployment_mode = os.environ.get("PROTECTOGOTCHI_DEPLOYMENT_MODE")
         valid_modes = {
             "observer",
+            "dns-guard",
             "local-host-firewall",
             "router-controller",
             "inline-gateway",

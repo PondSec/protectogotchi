@@ -11,7 +11,11 @@ from protectogotchi.collectors import get_collector
 from protectogotchi.config import ProtectogotchiConfig
 from protectogotchi.detection import list_detection_rules
 from protectogotchi.doctor import run_doctor
-from protectogotchi.enforcement import get_enforcement_mode, list_enforcement_modes
+from protectogotchi.enforcement import (
+    easy_protect_plan,
+    get_enforcement_mode,
+    list_enforcement_modes,
+)
 from protectogotchi.face import FACES, render_face
 from protectogotchi.knowledge import get_topic, list_topics
 from protectogotchi.netutil import normalize_mac
@@ -160,6 +164,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     enforcement_parser.add_argument("mode", nargs="?", help="Optional enforcement mode.")
 
+    easy_parser = subparsers.add_parser(
+        "easy-protect",
+        help="Show the easiest safe paths from detection to active protection.",
+    )
+    easy_parser.add_argument("--json", action="store_true", help="Print JSON.")
+
     simulate_parser = subparsers.add_parser(
         "simulate",
         help="Run a safe synthetic lab scenario without touching network traffic.",
@@ -290,6 +300,13 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_knowledge(args)
     if args.command == "enforcement":
         return _handle_enforcement(args)
+    if args.command == "easy-protect":
+        plan = easy_protect_plan(config)
+        if args.json:
+            print(json.dumps(plan, indent=2, sort_keys=True))
+        else:
+            _print_easy_protect(plan)
+        return 0
     if args.command == "simulate":
         result = run_simulation(args.scenario, config)
         if args.json:
@@ -482,6 +499,20 @@ def _print_enforcement_mode(mode) -> None:
     print("requirements:")
     for requirement in mode.requirements:
         print(f"- {requirement}")
+
+
+def _print_easy_protect(plan: list[dict]) -> None:
+    print("Easy protection paths:")
+    for item in plan:
+        if "current_readiness" in item:
+            readiness = item["current_readiness"]
+            print("current:")
+            for key, value in readiness.items():
+                print(f"- {key}: {value}")
+            continue
+        prevents = "prevents" if item.get("prevents") else "detects"
+        print(f"- {item['mode']} ({item['effort']}, {prevents})")
+        print(f"  {item['summary']}")
 
 
 def _print_topology(topology) -> None:

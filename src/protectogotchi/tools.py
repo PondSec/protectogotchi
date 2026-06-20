@@ -63,6 +63,12 @@ TOOLS: tuple[ToolDefinition, ...] = (
         command="protectogotchi enforcement",
     ),
     ToolDefinition(
+        name="easy-protect",
+        category="respond",
+        summary="Show safe plug-and-play paths from detection to active protection.",
+        command="protectogotchi easy-protect",
+    ),
+    ToolDefinition(
         name="simulate",
         category="diagnose",
         summary="Run synthetic lab attack/anomaly scenarios without packet injection.",

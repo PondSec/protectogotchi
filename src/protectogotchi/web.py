@@ -10,7 +10,7 @@ from urllib.parse import parse_qs, urlparse
 
 from protectogotchi.agent import ProtectogotchiAgent
 from protectogotchi.config import ProtectogotchiConfig
-from protectogotchi.enforcement import god_mode_readiness
+from protectogotchi.enforcement import easy_protect_plan, god_mode_readiness
 from protectogotchi.knowledge import list_topics
 from protectogotchi.models import ScanResult, utc_now
 from protectogotchi.network_map import NetworkMapper
@@ -433,6 +433,7 @@ class LiveWebState:
                     "devices": [],
                     "finding_history": [],
                     "god_mode_readiness": god_mode_readiness(self.config),
+                    "easy_protect_plan": easy_protect_plan(self.config),
                     "tools": [asdict(tool) for tool in list_tools()],
                     "knowledge": [asdict(topic) for topic in list_topics()],
                 }
@@ -476,6 +477,7 @@ class LiveWebState:
                 "devices": [],
                 "finding_history": [],
                 "god_mode_readiness": god_mode_readiness(self.config),
+                "easy_protect_plan": easy_protect_plan(self.config),
                 "tools": [asdict(tool) for tool in list_tools()],
                 "knowledge": [asdict(topic) for topic in list_topics()],
             }
@@ -508,6 +510,7 @@ def _live_payload(
         "devices": sorted(state.devices.values(), key=lambda item: item.get("mac", "")),
         "finding_history": state.finding_history[-50:],
         "god_mode_readiness": god_mode_readiness(config),
+        "easy_protect_plan": easy_protect_plan(config),
         "tools": [asdict(tool) for tool in list_tools()],
         "knowledge": [asdict(topic) for topic in list_topics()],
     }

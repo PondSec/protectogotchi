@@ -66,6 +66,13 @@ def test_enforcement_command_explains_inline_mode(capsys):
     assert "default gateway" in output
 
 
+def test_easy_protect_command_lists_safe_paths(capsys):
+    assert main(["easy-protect"]) == 0
+    output = capsys.readouterr().out
+    assert "dns-guard" in output
+    assert "transparent-bridge" in output
+
+
 def test_simulate_command_runs_arp_spoof_scenario(capsys):
     assert main(["simulate", "arp-spoof"]) == 0
     output = capsys.readouterr().out
