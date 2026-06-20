@@ -47,7 +47,7 @@ WEB_MODES: dict[str, dict[str, object]] = {
 
 def dashboard_html() -> str:
     return """<!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -56,414 +56,127 @@ def dashboard_html() -> str:
     :root {
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --bg: #eef3f7;
-      --ink: #17202a;
-      --muted: #607086;
-      --line: #c9d4e2;
-      --strong: #0f766e;
-      --warn: #b45309;
-      --danger: #b91c1c;
+      --bg: #fff8f1;
+      --card: rgba(255, 255, 255, .82);
+      --card-strong: #ffffff;
+      --ink: #352a33;
+      --muted: #806f7a;
+      --line: #f0d8df;
+      --soft: #ffe7ef;
+      --mint: #dff8ed;
+      --blue: #e6f1ff;
+      --strong: #17856f;
+      --warn: #b7791f;
+      --danger: #c2415d;
+      --shadow: 0 20px 60px rgba(122, 80, 102, .14);
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); }
-    header { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-    h1 { font-size: 22px; margin: 0; letter-spacing: 0; }
-    h2 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; }
-    main { display: grid; grid-template-columns: minmax(270px, 360px) 1fr; min-height: calc(100vh - 72px); }
-    .side { border-right: 1px solid var(--line); padding: 20px 24px; }
-    .work { padding: 0 24px 24px; }
-    .band { border-top: 1px solid var(--line); padding: 18px 0; }
-    .band:first-child { border-top: 0; }
-    .face { font: 700 44px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin-bottom: 12px; }
-    .state { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 10%, #ffe4f1 0, transparent 28%),
+        radial-gradient(circle at 88% 4%, #dff8ed 0, transparent 26%),
+        linear-gradient(135deg, #fffaf4 0%, #fff1f6 48%, #f4fbff 100%);
+      min-height: 100vh;
+    }
+    header { padding: 22px clamp(18px, 4vw, 42px); display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    h1 { font-size: clamp(24px, 4vw, 38px); margin: 0; letter-spacing: -.04em; }
+    h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); letter-spacing: .01em; }
+    h3 { margin: 0 0 8px; font-size: 16px; }
+    main { display: grid; grid-template-columns: minmax(300px, 390px) 1fr; gap: 22px; padding: 0 clamp(18px, 4vw, 42px) 34px; }
+    .side, .card, .tabs { background: var(--card); border: 1px solid rgba(240, 216, 223, .85); border-radius: 28px; box-shadow: var(--shadow); backdrop-filter: blur(12px); }
+    .side { padding: 24px; align-self: start; position: sticky; top: 18px; }
+    .work { min-width: 0; }
+    .hero { display: flex; gap: 16px; align-items: center; }
+    .pet { width: 116px; height: 116px; border-radius: 36px; background: linear-gradient(145deg, #fff, #ffe5ef); display: grid; place-items: center; box-shadow: inset 0 -10px 18px rgba(215, 99, 139, .08); border: 1px solid #ffd5e2; }
+    .face { font: 800 35px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .state { font-size: 25px; font-weight: 800; margin-bottom: 5px; letter-spacing: -.03em; }
     .muted { color: var(--muted); }
-    .live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
+    .bubble { position: relative; margin: 20px 0; padding: 16px 17px; border-radius: 24px 24px 24px 8px; background: var(--card-strong); border: 1px solid var(--line); line-height: 1.45; }
+    .bubble::before { content: ""; position: absolute; left: 22px; bottom: -9px; width: 18px; height: 18px; background: var(--card-strong); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
+    .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
     .headerActions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
-    .modeSwitch, .tabs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .modeSwitch button, .tabs button {
-      appearance: none;
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      padding: 8px 10px;
-      font: inherit;
-      cursor: pointer;
-    }
-    .modeSwitch button.active, .tabs button.active {
-      border-color: var(--ink);
-      background: rgba(255, 255, 255, .48);
-    }
-    .dot { width: 8px; height: 8px; background: var(--strong); display: inline-block; }
-    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 18px; }
-    .metric span { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-    .metric strong { display: block; font-size: 24px; margin-top: 2px; }
-    .risk-low { color: var(--strong); }
-    .risk-mid { color: var(--warn); }
-    .risk-high { color: var(--danger); }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .modeSwitch, .tabs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button { appearance: none; border: 0; border-radius: 999px; padding: 10px 14px; font: inherit; cursor: pointer; background: #fff; color: var(--ink); box-shadow: 0 4px 14px rgba(122,80,102,.08); }
+    button.active { background: #352a33; color: #fff; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--strong); display: inline-block; box-shadow: 0 0 0 6px rgba(23, 133, 111, .12); }
+    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+    .metric { background: rgba(255,255,255,.68); border: 1px solid var(--line); border-radius: 22px; padding: 14px; }
+    .metric span { display: block; color: var(--muted); font-size: 12px; }
+    .metric strong { display: block; font-size: 25px; margin-top: 2px; }
+    .risk-low { color: var(--strong); } .risk-mid { color: var(--warn); } .risk-high { color: var(--danger); }
+    .tabs { position: sticky; top: 0; padding: 12px; z-index: 2; margin-bottom: 18px; }
+    .panel { display: none; } .panel.active { display: grid; gap: 18px; }
+    .card { padding: 22px; overflow: hidden; }
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .storyList { display: grid; gap: 10px; }
+    .story { padding: 14px; border-radius: 20px; background: rgba(255,255,255,.68); border: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; }
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; line-height: 1.45; }
-    svg { width: 100%; min-height: 360px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .nodeLabel { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: var(--ink); }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; line-height: 1.55; color: #594a54; }
+    svg { width: 100%; min-height: 380px; border-radius: 24px; background: linear-gradient(180deg, #fff, #fff7fb); border: 1px solid var(--line); }
+    .nodeLabel { font: 13px ui-sans-serif, system-ui; fill: var(--ink); font-weight: 700; }
     .nodeMeta { font: 10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--muted); }
-    .link { stroke: #9bacbd; stroke-width: 1.2; }
-    .node { fill: #ffffff; stroke: var(--line); stroke-width: 1.3; }
-    .node.gateway, .node.default-gateway { stroke: var(--strong); stroke-width: 2; }
-    .node.host { fill: #dfeeea; }
-    .node.subnet { fill: #e4ebf5; }
-    .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
-    .tabs { position: sticky; top: 0; padding: 14px 0; background: var(--bg); border-bottom: 1px solid var(--line); z-index: 1; }
-    .panel { display: none; }
-    .panel.active { display: block; }
-    .finding { padding: 10px 0; border-bottom: 1px solid var(--line); }
-    .finding strong { display: block; }
-    .severity-critical, .severity-high { color: var(--danger); }
-    .severity-medium { color: var(--warn); }
-    .quietActions { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
-    .quietActions button {
-      appearance: none;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, .35);
-      color: var(--ink);
-      padding: 8px 10px;
-      font: inherit;
-      cursor: pointer;
-    }
-    @media (max-width: 860px) {
-      main { grid-template-columns: 1fr; }
-      .side { border-right: 0; border-bottom: 1px solid var(--line); }
-      .split { grid-template-columns: 1fr; }
-    }
+    .link { stroke: #e2b8c6; stroke-width: 2; stroke-linecap: round; }
+    .node { fill: #ffffff; stroke: #efc8d5; stroke-width: 1.5; rx: 18; ry: 18; }
+    .node.gateway, .node.default-gateway { stroke: var(--strong); stroke-width: 2.5; }
+    .node.host { fill: var(--soft); } .node.subnet { fill: var(--blue); } .node.interface { fill: var(--mint); }
+    .severity-critical, .severity-high { color: var(--danger); } .severity-medium { color: var(--warn); }
+    @media (max-width: 920px) { main { grid-template-columns: 1fr; } .side { position: static; } .grid2 { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <header>
-    <div>
-      <h1>Protectogotchi</h1>
-      <div class="muted">Local defensive network AI · realtime local view</div>
-    </div>
-    <div class="headerActions">
-      <div class="modeSwitch" aria-label="Mode">
-        <button data-mode="learn" class="active" onclick="setMode('learn')">Learn</button>
-        <button data-mode="watch" onclick="setMode('watch')">Watch</button>
-        <button data-mode="guard" onclick="setMode('guard')">Guard</button>
-        <button data-mode="god" onclick="setMode('god')">God Mode</button>
-        <button data-mode="pause" onclick="setMode('pause')">Pause</button>
-      </div>
-      <div class="live"><span class="dot"></span><span id="liveText">starting</span></div>
-    </div>
+    <div><h1>Protectogotchi</h1><div class="muted">Dein kleines Netzwerk-Haustier erklärt Schutz in Menschensprache.</div></div>
+    <div class="headerActions"><div class="modeSwitch" aria-label="Modus"><button data-mode="learn" class="active" onclick="setMode('learn')">Lernen</button><button data-mode="watch" onclick="setMode('watch')">Nur schauen</button><button data-mode="guard" onclick="setMode('guard')">Aufpassen</button><button data-mode="god" onclick="setMode('god')">Autopilot</button><button data-mode="pause" onclick="setMode('pause')">Pause</button></div><div class="live"><span class="dot"></span><span id="liveText">startet</span></div></div>
   </header>
   <main>
-    <aside class="side">
-      <div class="face" id="face">( o_o)</div>
-      <div class="state" id="state">Learning</div>
-      <div class="muted" id="mood">waiting for first scan</div>
-      <div class="metrics">
-        <div class="metric"><span>Risk</span><strong id="risk">-</strong></div>
-        <div class="metric"><span>Level</span><strong id="level">-</strong></div>
-        <div class="metric"><span>Baseline</span><strong id="baseline">-</strong></div>
-        <div class="metric"><span>Devices</span><strong id="devicesCount">-</strong></div>
-      </div>
-    </aside>
-    <div class="work">
-      <nav class="tabs" aria-label="Views">
-        <button data-tab="overview" class="active" onclick="switchTab('overview')">Overview</button>
-        <button data-tab="network" onclick="switchTab('network')">Network</button>
-        <button data-tab="findings" onclick="switchTab('findings')">Findings</button>
-        <button data-tab="devices" onclick="switchTab('devices')">Devices</button>
-        <button data-tab="lab" onclick="switchTab('lab')">Lab</button>
-        <button data-tab="arsenal" onclick="switchTab('arsenal')">Arsenal</button>
-      </nav>
-      <div class="band panel active" data-panel="overview">
-        <h2>Overview</h2>
-        <svg id="networkGraph" role="img" aria-label="Logical network map"></svg>
-        <div class="split">
-          <pre id="network">loading...</pre>
-          <pre id="topology">loading...</pre>
-        </div>
-      </div>
-      <div class="band panel" data-panel="network">
-        <h2>Network</h2>
-        <div class="split">
-          <pre id="networkDetail">loading...</pre>
-          <pre id="coverage">loading...</pre>
-        </div>
-      </div>
-      <div class="band panel" data-panel="findings">
-        <h2>Findings</h2>
-        <div id="findings">loading...</div>
-        <h2 style="margin-top:22px">Recent History</h2>
-        <div id="history">loading...</div>
-      </div>
-      <div class="band panel" data-panel="devices">
-        <h2>Known Devices</h2>
-        <table>
-          <thead><tr><th>MAC</th><th>IPs</th><th>Seen</th><th>Last seen</th></tr></thead>
-          <tbody id="devices"></tbody>
-        </table>
-      </div>
-      <div class="band panel" data-panel="lab">
-        <h2>Setup Reality Check</h2>
-        <pre id="placement">loading...</pre>
-        <h2 style="margin-top:22px">Attack Simulation</h2>
-        <div class="quietActions" id="simulationButtons"></div>
-        <pre id="simulation">choose a scenario</pre>
-      </div>
-      <div class="band panel" data-panel="arsenal">
-        <h2>Arsenal</h2>
-        <div class="split">
-          <pre id="tools">loading...</pre>
-          <pre id="knowledge">loading...</pre>
-        </div>
-      </div>
+    <aside class="side"><div class="hero"><div class="pet"><div class="face" id="face">( o_o)</div></div><div><div class="state" id="state">Ich wache auf</div><div class="muted" id="mood">warte auf den ersten Blick ins Netzwerk</div></div></div><div class="bubble" id="thought">Ich schaue gleich nach, ob zuhause alles ruhig ist.</div><div class="metrics"><div class="metric"><span>Bauchgefühl</span><strong id="risk">-</strong></div><div class="metric"><span>Erfahrung</span><strong id="level">-</strong></div><div class="metric"><span>Gelernt</span><strong id="baseline">-</strong></div><div class="metric"><span>Geräte</span><strong id="devicesCount">-</strong></div></div></aside>
+    <div class="work"><nav class="tabs" aria-label="Ansichten"><button data-tab="overview" class="active" onclick="switchTab('overview')">Zuhause</button><button data-tab="activity" onclick="switchTab('activity')">Was passiert?</button><button data-tab="findings" onclick="switchTab('findings')">Sorgen</button><button data-tab="devices" onclick="switchTab('devices')">Mitbewohner</button><button data-tab="lab" onclick="switchTab('lab')">Spielwiese</button><button data-tab="arsenal" onclick="switchTab('arsenal')">Hilfe</button></nav>
+      <section class="panel active" data-panel="overview"><div class="card"><h2>Die Wohnungskarte</h2><svg id="networkGraph" role="img" aria-label="Einfache Netzwerkkarte"></svg></div><div class="grid2"><div class="card"><h2>Kurz gesagt</h2><div id="plainSummary" class="storyList">lädt...</div></div><div class="card"><h2>Wie wachsam bin ich?</h2><pre id="topology">lädt...</pre></div></div></section>
+      <section class="panel" data-panel="activity"><div class="card"><h2>Gerade im Netzwerk los</h2><div id="activity">lädt...</div></div><div class="grid2"><div class="card"><h2>Details für Neugierige</h2><pre id="networkDetail">lädt...</pre></div><div class="card"><h2>Abdeckung</h2><pre id="coverage">lädt...</pre></div></div></section>
+      <section class="panel" data-panel="findings"><div class="card"><h2>Sorgen & Empfehlungen</h2><div id="findings">lädt...</div></div><div class="card"><h2>Letzte Erinnerungen</h2><div id="history">lädt...</div></div></section>
+      <section class="panel" data-panel="devices"><div class="card"><h2>Bekannte Mitbewohner</h2><table><thead><tr><th>Name</th><th>Adresse</th><th>Wie oft gesehen</th><th>Zuletzt</th></tr></thead><tbody id="devices"></tbody></table></div></section>
+      <section class="panel" data-panel="lab"><div class="card"><h2>Passt mein Platz?</h2><pre id="placement">lädt...</pre></div><div class="card"><h2>Gefahr gefahrlos ausprobieren</h2><div class="modeSwitch" id="simulationButtons"></div><pre id="simulation">Such dir ein kleines Szenario aus.</pre></div></section>
+      <section class="panel" data-panel="arsenal"><div class="grid2"><div class="card"><h2>Was ich benutzen kann</h2><pre id="tools">lädt...</pre></div><div class="card"><h2>Was ich weiß</h2><pre id="knowledge">lädt...</pre></div></div></section>
     </div>
   </main>
   <script>
-    const faces = {
-      idle: "( -_-)",
-      learning: "( o_o)",
-      analyzing: "( @_@)",
-      alert: "( O_O)!",
-      fighting: "( >_<)",
-      happy: "( ^_^)"
-    };
-    async function getJson(path) {
-      const response = await fetch(path);
-      if (!response.ok) throw new Error(path + " -> " + response.status);
-      return response.json();
+    const faces = { idle:"( -_-)", bored:"( -3-)", learning:"( o_o)", analyzing:"( @_@)", alert:"( O_O)!", fighting:"( >_<)", happy:"( ^_^)", curious:"( •_•)?" };
+    const modeNames = { learn:"Lernen", watch:"Nur schauen", guard:"Aufpassen", god:"Autopilot", pause:"Pause" };
+    async function getJson(path){ const r=await fetch(path); if(!r.ok) throw new Error(path+" -> "+r.status); return r.json(); }
+    function severityWord(s){ return ({info:"Info",low:"kleine Sorge",medium:"bitte anschauen",high:"wichtig",critical:"dringend"})[s] || s; }
+    function riskWord(score){ if(score>=70) return "unruhig"; if(score>=35) return "aufmerksam"; return "ruhig"; }
+    async function refresh(){
+      const live=await getJson('/api/live'); const scan=live.scan||{}; const state=live.state||{}; const snapshot=scan.snapshot||{}; const faceState=live.pet_state || scan.face_state || (state.baseline_ready?'happy':'learning');
+      document.getElementById('face').textContent=faces[faceState]||faces.idle; document.getElementById('state').textContent=live.pet_headline || modeNames[live.mode] || 'Ich passe auf'; document.getElementById('mood').textContent=live.pet_subtitle || live.mode_description || '';
+      document.getElementById('thought').textContent=live.thought || 'Ich schaue mich um und sage Bescheid, wenn mir etwas komisch vorkommt.'; renderMode(live.mode||'learn');
+      document.getElementById('risk').textContent=riskWord(scan.risk_score||0); document.getElementById('risk').className=(scan.risk_score||0)>=70?'risk-high':((scan.risk_score||0)>=35?'risk-mid':'risk-low'); document.getElementById('level').textContent=state.level??'-'; document.getElementById('baseline').textContent=state.baseline_ready?'ja':((state.learning_remaining||0)+' Blicke'); document.getElementById('devicesCount').textContent=state.known_devices??'-'; document.getElementById('liveText').textContent='zuletzt geschaut: '+(live.updated_at||'gerade');
+      renderPlainSummary(live, snapshot); renderActivity(live, snapshot); renderGraph((live.network_map||{}).graph||{nodes:[],edges:[]}); renderFindings(scan.findings||[]); renderHistory(live.finding_history||[]); renderDevices(live.devices||[]); renderPlacement(live.placement_report||{}); renderSimulationButtons(live.simulations||[]);
+      document.getElementById('topology').textContent=(live.calm_status||[]).join('\n'); document.getElementById('networkDetail').textContent=JSON.stringify((live.network_map||{}).summary||{},null,2); document.getElementById('coverage').textContent=((live.network_map||{}).coverage||[]).join('\n') || 'Noch keine Abdeckung bekannt.'; document.getElementById('tools').textContent=(live.tools||[]).map(t=>'• '+t.name+' — '+t.status).join('\n'); document.getElementById('knowledge').textContent=(live.knowledge||[]).map(t=>'• '+t.name+' ('+t.domain+')').join('\n');
     }
-    async function refresh() {
-      const live = await getJson("/api/live");
-      const scan = live.scan || {};
-      const state = live.state || {};
-      const snapshot = scan.snapshot || {};
-      const faceState = scan.face_state || (state.baseline_ready ? "happy" : "learning");
-
-      document.getElementById("face").textContent = faces[faceState] || faces.idle;
-      document.getElementById("state").textContent = faceState.replace("-", " ");
-      document.getElementById("mood").textContent = live.error || live.mode_description || (scan.learned ? "learning safely" : "watching without baseline change");
-      renderMode(live.mode || "learn", live.mode_description || "");
-      document.getElementById("risk").textContent = scan.risk_score ?? "-";
-      document.getElementById("risk").className = (scan.risk_score || 0) >= 70 ? "risk-high" : ((scan.risk_score || 0) >= 35 ? "risk-mid" : "risk-low");
-      document.getElementById("level").textContent = state.level ?? "-";
-      document.getElementById("baseline").textContent = state.baseline_ready ? "ready" : ((state.learning_remaining || 0) + " left");
-      document.getElementById("devicesCount").textContent = state.known_devices ?? "-";
-      document.getElementById("liveText").textContent = "updated " + (live.updated_at || "now");
-
-      document.getElementById("network").textContent = [
-        "ssid: " + ((snapshot.wifi || {}).ssid || "unknown"),
-        "gateway: " + (snapshot.default_gateway || "unknown"),
-        "mode: " + (live.mode || "learn"),
-        "active interfaces: " + (((live.network_map || {}).summary || {}).active_interfaces ?? "-"),
-        "local subnets: " + (((live.network_map || {}).subnets || []).join(", ") || "none"),
-        "interfaces: " + ((snapshot.interfaces || []).length),
-        "routes: " + ((snapshot.routes || []).length),
-        "connections: " + ((snapshot.connections || []).length)
-      ].join("\\n");
-      document.getElementById("topology").textContent = JSON.stringify(live.topology_summary || {}, null, 2);
-      document.getElementById("networkDetail").textContent = JSON.stringify((live.network_map || {}).summary || {}, null, 2);
-      document.getElementById("coverage").textContent = ((live.network_map || {}).coverage || []).join("\\n");
-      renderGraph((live.network_map || {}).graph || { nodes: [], edges: [] });
-
-      renderFindings(scan.findings || []);
-      renderHistory(live.finding_history || []);
-      renderDevices(live.devices || []);
-      renderPlacement(live.placement_report || {});
-      renderSimulationButtons(live.simulations || []);
-      document.getElementById("tools").textContent = (live.tools || []).map(t => t.name + " [" + t.status + "]").join("\\n");
-      document.getElementById("knowledge").textContent = [
-        "God Mode readiness:",
-        JSON.stringify(live.god_mode_readiness || {}, null, 2),
-        "",
-        ...(live.knowledge || []).map(t => t.name + " (" + t.domain + ")")
-      ].join("\\n");
-    }
-    function renderFindings(findings) {
-      const target = document.getElementById("findings");
-      if (!findings.length) {
-        target.innerHTML = "<span class='muted'>No findings in the latest scan.</span>";
-        return;
-      }
-      target.innerHTML = findings.map(f => `
-        <div class="finding">
-          <strong class="severity-${f.severity}">[${f.severity}] ${f.title}</strong>
-          <span>${f.description}</span><br>
-          <code>${JSON.stringify(f.evidence || {})}</code>
-        </div>
-      `).join("");
-    }
-    function renderHistory(history) {
-      const target = document.getElementById("history");
-      if (!history.length) {
-        target.innerHTML = "<span class='muted'>No finding history yet.</span>";
-        return;
-      }
-      target.innerHTML = history.slice(-12).reverse().map(f => `
-        <div class="finding">
-          <strong class="severity-${f.severity}">${f.seen_at} · [${f.severity}] ${f.title}</strong>
-          <span>${f.description}</span><br>
-          <code>${JSON.stringify(f.evidence || {})}</code>
-        </div>
-      `).join("");
-    }
-    function renderDevices(devices) {
-      const target = document.getElementById("devices");
-      target.innerHTML = devices.map(d => `
-        <tr>
-          <td><code>${d.mac}</code></td>
-          <td>${(d.ips || []).join(", ")}</td>
-          <td>${d.seen_count || 0}</td>
-          <td>${d.last_seen || "-"}</td>
-        </tr>
-      `).join("");
-    }
-    function renderPlacement(report) {
-      const lines = [
-        "mode: " + (report.deployment_mode || "unknown"),
-        "active response: " + (report.active_response_enabled ? "yes" : "no"),
-        "firewall/controller automation: " + (report.firewall_controller_automation ? "yes" : "no"),
-        "summary: " + (report.summary || "not available"),
-        "same-subnet devices: " + (report.same_subnet_devices ?? "-"),
-        "routed subnets: " + ((report.routed_subnets || []).join(", ") || "none"),
-        "observed remote subnets: " + ((report.observed_remote_subnets || []).join(", ") || "none"),
-        "",
-        "can detect:",
-        ...((report.can_detect || []).map(c => "- " + c.name + " [" + c.status + "] " + c.detail)),
-        "",
-        "can prevent:",
-        ...((report.can_prevent || []).length ? report.can_prevent.map(c => "- " + c.name + " [" + c.status + "] " + c.detail) : ["- none from this placement"]),
-        "",
-        "cannot prevent:",
-        ...((report.cannot_prevent || []).map(c => "- " + c.name + " [" + c.status + "] " + c.detail)),
-        "",
-        "next steps:",
-        ...((report.next_steps || []).map(step => "- " + step))
-      ];
-      document.getElementById("placement").textContent = lines.join("\\n");
-    }
-    function renderSimulationButtons(scenarios) {
-      const target = document.getElementById("simulationButtons");
-      target.innerHTML = scenarios.map(name => `<button onclick="runLabScenario('${escapeHtml(name)}')">${escapeHtml(name)}</button>`).join("");
-    }
-    async function runLabScenario(scenario) {
-      const result = await getJson("/api/simulate?scenario=" + encodeURIComponent(scenario));
-      const lines = [
-        "scenario: " + result.scenario,
-        "isolated: " + (result.isolated ? "yes" : "no"),
-        "environment: " + result.environment,
-        "risk: " + result.risk_score + " face: " + result.face_state,
-        "",
-        "timeline:",
-        ...(result.timeline || []).flatMap(e => ["- " + e.phase + ": " + e.detail, "  view: " + e.protectogotchi_view]),
-        "",
-        "simulated packets:",
-        ...(result.packets || []).map(p => "- " + p.protocol + " " + p.source + " -> " + p.destination + " [" + p.verdict + "] " + p.summary),
-        "",
-        "findings:",
-        ...((result.findings || []).map(f => "- [" + f.severity + "] " + f.code + ": " + f.title)),
-        "",
-        "lessons:",
-        ...((result.lessons || []).map(l => "- " + l))
-      ];
-      document.getElementById("simulation").textContent = lines.join("\\n");
-    }
-    function renderGraph(graph) {
-      const svg = document.getElementById("networkGraph");
-      const nodes = graph.nodes || [];
-      const edges = graph.edges || [];
-      const width = Math.max(760, svg.clientWidth || 760);
-      const byId = new Map(nodes.map(n => [n.id, n]));
-      const columns = {
-        host: 70,
-        interface: 230,
-        subnet: 410,
-        gateway: 610,
-        "default-gateway": 610,
-        endpoint: 610,
-        "local-host": 610,
-        "infrastructure-candidate": 610
-      };
-      const grouped = {};
-      for (const node of nodes) {
-        const kind = node.kind || "endpoint";
-        grouped[kind] = grouped[kind] || [];
-        grouped[kind].push(node);
-      }
-      const ySlots = {};
-      const ordered = ["host", "interface", "subnet", "default-gateway", "gateway", "infrastructure-candidate", "endpoint", "local-host"];
-      for (const kind of ordered) {
-        const items = grouped[kind] || [];
-        items.forEach((node, index) => {
-          const x = columns[kind] || 610;
-          const spread = Math.max(1, items.length);
-          const y = 60 + index * Math.max(54, 270 / spread);
-          ySlots[node.id] = { x, y };
-        });
-      }
-      const height = Math.max(360, ...Object.values(ySlots).map(p => p.y + 45));
-      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      const edgeSvg = edges.map(edge => {
-        const source = ySlots[edge.source];
-        const target = ySlots[edge.target];
-        if (!source || !target) return "";
-        return `<line class="link" x1="${source.x + 60}" y1="${source.y}" x2="${target.x - 60}" y2="${target.y}"></line>`;
-      }).join("");
-      const nodeSvg = nodes.map(node => {
-        const pos = ySlots[node.id];
-        if (!pos) return "";
-        const kind = node.kind || "endpoint";
-        const label = escapeHtml(node.label || node.id);
-        const meta = escapeHtml([node.ip, node.mac].filter(Boolean).join(" · "));
-        return `
-          <g>
-            <rect class="node ${kind}" x="${pos.x - 58}" y="${pos.y - 20}" width="116" height="40"></rect>
-            <text class="nodeLabel" x="${pos.x - 50}" y="${pos.y - 3}">${label}</text>
-            <text class="nodeMeta" x="${pos.x - 50}" y="${pos.y + 12}">${meta}</text>
-          </g>
-        `;
-      }).join("");
-      svg.innerHTML = edgeSvg + nodeSvg;
-    }
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
-    }
-    function switchTab(tab) {
-      document.querySelectorAll("[data-tab]").forEach(button => button.classList.toggle("active", button.dataset.tab === tab));
-      document.querySelectorAll("[data-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.panel === tab));
-    }
-    function renderMode(mode, description) {
-      document.querySelectorAll("[data-mode]").forEach(button => button.classList.toggle("active", button.dataset.mode === mode));
-    }
-    async function setMode(mode) {
-      let body = { mode };
-      if (mode === "god") {
-        const phrase = window.prompt('God Mode is autonomous and acts at your own responsibility. Network-wide prevention requires a real enforcement point such as router-controller, inline-gateway, transparent-bridge, managed AP/switch, or endpoint agent. It does not enable covert ARP/MitM. Type ACTIVATE GOD MODE to continue.');
-        if (phrase !== "ACTIVATE GOD MODE") return;
-        body.confirm = phrase;
-      }
-      await fetch("/api/mode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      await refresh();
-    }
-    refresh().catch(error => {
-      document.getElementById("liveText").textContent = String(error);
-    });
-    setInterval(() => refresh().catch(error => {
-      document.getElementById("liveText").textContent = String(error);
-    }), 2000);
+    function renderPlainSummary(live,s){ const items=[['WLAN', (s.wifi||{}).ssid || 'nicht erkannt'], ['Internet-Tür', s.default_gateway || 'noch unbekannt'], ['Modus', modeNames[live.mode] || live.mode], ['Aktive Verbindungen', (s.connections||[]).length], ['Gefundene Geräte', (s.devices||[]).length]]; document.getElementById('plainSummary').innerHTML=items.map(i=>`<div class="story"><strong>${i[0]}</strong><br><span class="muted">${escapeHtml(i[1])}</span></div>`).join(''); }
+    function renderActivity(live,s){ const findings=(live.scan||{}).findings||[]; const lines=[]; lines.push(`<div class="story"><strong>${findings.length?'Ich habe etwas bemerkt':'Alles wirkt gerade ruhig'}</strong><br><span class="muted">${escapeHtml(live.activity_summary||'Keine ungewöhnlichen Geräusche im Netzwerk.')}</span></div>`); (s.connections||[]).slice(0,8).forEach(c=>lines.push(`<div class="story">${escapeHtml(c.protocol||'Verbindung')} von ${escapeHtml(c.local_address||'?')}:${c.local_port||''} zu ${escapeHtml(c.remote_address||'zuhause')}:${c.remote_port||''}<br><span class="muted">Status: ${escapeHtml(c.state||'unbekannt')}</span></div>`)); document.getElementById('activity').innerHTML=lines.join(''); }
+    function renderFindings(findings){ const t=document.getElementById('findings'); if(!findings.length){t.innerHTML="<div class='story'><strong>Keine Sorgen.</strong><br><span class='muted'>Ich sehe gerade nichts, das dich stressen sollte.</span></div>"; return;} t.innerHTML=findings.map(f=>`<div class="story"><strong class="severity-${f.severity}">${severityWord(f.severity)}: ${escapeHtml(f.title)}</strong><br><span>${escapeHtml(f.description)}</span><br><span class="muted">Mein Vorschlag: ${escapeHtml(f.recommended_action||'beobachten')}</span></div>`).join(''); }
+    function renderHistory(history){ const t=document.getElementById('history'); if(!history.length){t.innerHTML="<span class='muted'>Noch keine Erinnerungen.</span>"; return;} t.innerHTML=history.slice(-10).reverse().map(f=>`<div class="story"><strong class="severity-${f.severity}">${escapeHtml(f.title)}</strong><br><span class="muted">${escapeHtml(f.seen_at)} · ${severityWord(f.severity)}</span></div>`).join(''); }
+    function renderDevices(devices){ document.getElementById('devices').innerHTML=devices.map(d=>`<tr><td>${escapeHtml(d.hostname||'Unbenanntes Gerät')}<br><code>${escapeHtml(d.mac)}</code></td><td>${escapeHtml((d.ips||[]).join(', ')||'-')}</td><td>${d.seen_count||0}</td><td>${escapeHtml(d.last_seen||'-')}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Noch keine Geräte gelernt.</td></tr>'; }
+    function renderPlacement(r){ document.getElementById('placement').textContent=['Kurzfassung: '+(r.summary||'noch unbekannt'),'Schutz aktiv: '+(r.active_response_enabled?'ja':'noch nicht'),'Automatisierung: '+(r.firewall_controller_automation?'ja':'nein'),'Nächste liebevolle Schritte:',...((r.next_steps||[]).map(s=>'• '+s))].join('\n'); }
+    function renderSimulationButtons(s){ document.getElementById('simulationButtons').innerHTML=s.map(n=>`<button onclick="runLabScenario('${escapeHtml(n)}')">${escapeHtml(n)}</button>`).join(''); }
+    async function runLabScenario(scenario){ const r=await getJson('/api/simulate?scenario='+encodeURIComponent(scenario)); document.getElementById('simulation').textContent=['Szenario: '+r.scenario,'Risiko: '+riskWord(r.risk_score||0),'Was ich lerne:',...((r.lessons||[]).map(l=>'• '+l))].join('\n'); }
+    function renderGraph(graph){ const svg=document.getElementById('networkGraph'), nodes=graph.nodes||[], edges=graph.edges||[], width=Math.max(760,svg.clientWidth||760), columns={host:90,interface:250,subnet:430,gateway:630,'default-gateway':630,endpoint:630,'local-host':630,'infrastructure-candidate':630}, grouped={}; nodes.forEach(n=>{const k=n.kind||'endpoint'; (grouped[k]=grouped[k]||[]).push(n);}); const pos={}; ['host','interface','subnet','default-gateway','gateway','infrastructure-candidate','endpoint','local-host'].forEach(k=>(grouped[k]||[]).forEach((n,i)=>pos[n.id]={x:columns[k]||630,y:65+i*70})); const height=Math.max(380,...Object.values(pos).map(p=>p.y+55)); svg.setAttribute('viewBox',`0 0 ${width} ${height}`); svg.innerHTML=edges.map(e=>pos[e.source]&&pos[e.target]?`<line class="link" x1="${pos[e.source].x+62}" y1="${pos[e.source].y}" x2="${pos[e.target].x-62}" y2="${pos[e.target].y}"></line>`:'').join('')+nodes.map(n=>{const p=pos[n.id]; if(!p)return''; return `<g><rect class="node ${n.kind||'endpoint'}" x="${p.x-62}" y="${p.y-24}" width="124" height="48"></rect><text class="nodeLabel" x="${p.x-52}" y="${p.y-4}">${escapeHtml(n.label||n.id)}</text><text class="nodeMeta" x="${p.x-52}" y="${p.y+13}">${escapeHtml([n.ip,n.mac].filter(Boolean).join(' · '))}</text></g>`}).join(''); }
+    function escapeHtml(v){ return String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+    function switchTab(tab){ document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab)); document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('active',p.dataset.panel===tab)); }
+    function renderMode(mode){ document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode)); }
+    async function setMode(mode){ let body={mode}; if(mode==='god'){ const phrase=window.prompt('Autopilot handelt selbstständiger. Schutz im ganzen Netzwerk braucht Router, Firewall oder ähnliches. Es wird kein heimliches ARP/MitM aktiviert. Tippe ACTIVATE GOD MODE.'); if(phrase!=='ACTIVATE GOD MODE') return; body.confirm=phrase; } await fetch('/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); await refresh(); }
+    refresh().catch(e=>document.getElementById('liveText').textContent=String(e)); setInterval(()=>refresh().catch(e=>document.getElementById('liveText').textContent=String(e)),1500);
   </script>
 </body>
 </html>
 """
+
 
 
 class LiveWebState:
@@ -482,6 +195,7 @@ class LiveWebState:
         self.thread = threading.Thread(target=self._loop, name="protectogotchi-web-scan", daemon=True)
         self.payload: dict | None = None
         self.mode = "learn"
+        self.quiet_scans = 0
 
     def start(self) -> None:
         self.thread.start()
@@ -537,7 +251,11 @@ class LiveWebState:
         try:
             result = self.agent.scan(learn=learn_flag, execute_actions=execute_actions)
             topology = TopologyBuilder().build(result.snapshot)
-            payload = _live_payload(self.config, result, topology, mode)
+            if analysis_is_quiet(result):
+                self.quiet_scans += 1
+            else:
+                self.quiet_scans = 0
+            payload = _live_payload(self.config, result, topology, mode, quiet_scans=self.quiet_scans)
         except Exception as exc:  # pragma: no cover - defensive runtime guard
             payload = {
                 "updated_at": utc_now(),
@@ -564,7 +282,18 @@ class LiveWebState:
     def _loop(self) -> None:
         while not self.stop_event.is_set():
             self.refresh_once()
-            self.stop_event.wait(self.scan_interval)
+            wait_for = self._next_wait()
+            self.stop_event.wait(wait_for)
+
+    def _next_wait(self) -> float:
+        with self.lock:
+            mode = self.mode
+            quiet_scans = self.quiet_scans
+        if mode == "pause":
+            return self.scan_interval
+        if quiet_scans >= 3:
+            return max(1.0, min(self.scan_interval, 2.0))
+        return max(1.0, min(self.scan_interval, 3.0))
 
 
 def _live_payload(
@@ -572,11 +301,19 @@ def _live_payload(
     result: ScanResult,
     topology: NetworkTopology,
     mode: str = "learn",
+    quiet_scans: int = 0,
 ) -> dict:
     state = StateStore(config.state_dir).load()
     network_map = NetworkMapper().build(result.snapshot)
+    pet_state, headline, subtitle, thought, activity, calm_status = _pet_narration(result, mode, quiet_scans)
     return {
         "updated_at": utc_now(),
+        "pet_state": pet_state,
+        "pet_headline": headline,
+        "pet_subtitle": subtitle,
+        "thought": thought,
+        "activity_summary": activity,
+        "calm_status": calm_status,
         "mode": mode,
         "mode_description": WEB_MODES[mode]["description"],
         "state": _state_summary(config),
@@ -594,6 +331,76 @@ def _live_payload(
         "knowledge": [asdict(topic) for topic in list_topics()],
     }
 
+
+
+def analysis_is_quiet(result: ScanResult) -> bool:
+    return result.risk_score < 10 and all(finding.severity == "info" for finding in result.findings)
+
+
+def _pet_narration(
+    result: ScanResult,
+    mode: str,
+    quiet_scans: int,
+) -> tuple[str, str, str, str, str, list[str]]:
+    snapshot = result.snapshot
+    finding_count = len([finding for finding in result.findings if finding.severity != "info"])
+    connection_count = len(snapshot.connections)
+    device_count = len(snapshot.devices)
+    gateway = snapshot.default_gateway or "die Internet-Tür"
+
+    if result.risk_score >= 70:
+        pet_state = "alert"
+        headline = "Oh! Das wirkt wichtig"
+        subtitle = "Ich bleibe dicht dran und sammle Hinweise."
+        thought = "Da ist etwas, das nicht zu deinem normalen Zuhause passt. Ich erkläre es unten ohne Technik-Kauderwelsch."
+    elif result.risk_score >= 35 or finding_count:
+        pet_state = "curious"
+        headline = "Ich bin neugierig"
+        subtitle = "Ein paar Dinge verdienen einen zweiten Blick."
+        thought = "Nichts zum Panischwerden, aber ich möchte diese Veränderung lieber beobachten."
+    elif quiet_scans >= 3:
+        pet_state = "bored"
+        headline = "Mir ist fast langweilig"
+        subtitle = "Alles ist ruhig, deshalb schaue ich öfter kurz nach."
+        thought = "Keine neuen Geräusche im Netzwerk. Ich mache trotzdem kleine Kontrollblicke, damit mir nichts entwischt."
+    elif result.learned:
+        pet_state = "learning"
+        headline = "Ich lerne dein Zuhause"
+        subtitle = "Saubere Beobachtungen merke ich mir als normal."
+        thought = "Dieses Muster sieht freundlich aus. Ich lege es in mein kleines Gedächtnis."
+    else:
+        pet_state = result.face_state if result.face_state in {"happy", "analyzing"} else "happy"
+        headline = "Alles wirkt ruhig"
+        subtitle = "Ich passe leise im Hintergrund auf."
+        thought = "Ich sehe keine akute Sorge. Wenn sich etwas komisch anfühlt, sage ich es hier in einfachen Worten."
+
+    if mode == "god":
+        subtitle = "Autopilot ist an: ich darf vorbereitete Schutzaktionen selbst ausführen."
+    elif mode == "guard":
+        subtitle = "Wächtermodus: ich beobachte, lerne vorsichtig und plane Schutz."
+    elif mode == "watch":
+        subtitle = "Nur schauen: ich verändere nichts und erzähle nur, was ich sehe."
+    elif mode == "pause":
+        pet_state = "idle"
+        headline = "Ich mache Pause"
+        subtitle = "Die Oberfläche bleibt offen, aber ich scanne nicht weiter."
+
+    activity = (
+        f"Ich sehe {device_count} Gerät(e), {connection_count} Verbindung(en) und nutze {gateway} als Ausgang nach draußen."
+    )
+    if finding_count:
+        activity += f" Dabei habe ich {finding_count} Sorge(n) markiert."
+    else:
+        activity += " Gerade klingt das unauffällig."
+
+    calm_status = [
+        f"Modus: {mode}",
+        f"Risiko-Zahl intern: {result.risk_score}/100",
+        f"Geräte in diesem Blick: {device_count}",
+        f"Verbindungen in diesem Blick: {connection_count}",
+        f"Ruhige Blicke hintereinander: {quiet_scans}",
+    ]
+    return pet_state, headline, subtitle, thought, activity, calm_status
 
 def _state_summary(config: ProtectogotchiConfig) -> dict:
     state = StateStore(config.state_dir).load()
