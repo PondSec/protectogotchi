@@ -29,11 +29,14 @@ owner.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install ".[dev]"
 protectogotchi --help
 protectogotchi scan
 protectogotchi status
 ```
+
+For live source-tree development you can also run commands with
+`PYTHONPATH=src python -m protectogotchi ...`.
 
 Useful commands:
 
