@@ -100,3 +100,43 @@ def test_reexec_without_virtualenv_allows_opt_in_venv(monkeypatch):
     start.reexec_without_virtualenv()
 
     assert called is False
+
+
+def test_reexec_with_torch_python_selects_candidate_with_torch(monkeypatch, tmp_path):
+    target = tmp_path / "python3.12"
+    target.write_text("")
+    captured = {}
+
+    def fake_execve(path, argv, env):
+        captured["path"] = path
+        captured["argv"] = argv
+        captured["env"] = env
+
+    monkeypatch.delenv("PROTECTOGOTCHI_DISABLE_TORCH_REEXEC", raising=False)
+    monkeypatch.delenv("PROTECTOGOTCHI_TORCH_REEXECED", raising=False)
+    monkeypatch.setattr(start, "module_available", lambda module: False)
+    monkeypatch.setattr(start, "candidate_python_executables", lambda: [str(target)])
+    monkeypatch.setattr(start, "python_has_module", lambda executable, module: True)
+    monkeypatch.setattr(start.sys, "argv", ["start.py", "ai"])
+    monkeypatch.setattr(start.os, "execve", fake_execve)
+
+    start.reexec_with_torch_python()
+
+    assert captured["path"] == str(target)
+    assert captured["argv"] == [str(target), str(start.Path(start.__file__).resolve()), "ai"]
+    assert captured["env"]["PROTECTOGOTCHI_TORCH_REEXECED"] == "1"
+
+
+def test_reexec_with_torch_python_stays_when_current_python_has_torch(monkeypatch):
+    called = False
+
+    def fake_execve(*_args):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(start, "module_available", lambda module: True)
+    monkeypatch.setattr(start.os, "execve", fake_execve)
+
+    start.reexec_with_torch_python()
+
+    assert called is False

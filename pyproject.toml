@@ -19,6 +19,7 @@ dev = [
   "pytest>=8"
 ]
 ml = [
+  "numpy>=2.0",
   "torch>=2.2"
 ]
 

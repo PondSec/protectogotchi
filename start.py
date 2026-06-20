@@ -13,12 +13,17 @@ so the project does not depend on venv activation.
 
 from __future__ import annotations
 
+import importlib.util
 import os
+import shutil
+import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 
 DEFAULT_ARGS = ["web", "--host", "127.0.0.1", "--port", "8765", "--scan-interval", "3"]
+TORCH_PYTHON_CANDIDATES = ("python3.12", "python3.11", "python3.10", "python3")
 
 
 def repo_root() -> Path:
@@ -79,11 +84,82 @@ def reexec_without_virtualenv() -> None:
     )
 
 
+def module_available(module: str) -> bool:
+    return importlib.util.find_spec(module) is not None
+
+
+def python_has_module(executable: str, module: str) -> bool:
+    try:
+        result = subprocess.run(
+            [
+                executable,
+                "-c",
+                (
+                    "import importlib.util, sys; "
+                    f"sys.exit(0 if importlib.util.find_spec({module!r}) else 1)"
+                ),
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0
+
+
+def candidate_python_executables() -> list[str]:
+    candidates = []
+    preferred = os.environ.get("PROTECTOGOTCHI_PYTHON")
+    if preferred:
+        candidates.append(preferred)
+    candidates.extend(TORCH_PYTHON_CANDIDATES)
+
+    resolved = []
+    seen = {str(Path(sys.executable).resolve())}
+    for candidate in candidates:
+        executable = shutil.which(candidate) if not Path(candidate).exists() else candidate
+        if not executable:
+            continue
+        path = str(Path(executable).resolve())
+        if path in seen:
+            continue
+        seen.add(path)
+        resolved.append(path)
+    return resolved
+
+
+def reexec_with_torch_python() -> None:
+    if os.environ.get("PROTECTOGOTCHI_DISABLE_TORCH_REEXEC") == "1":
+        return
+    if os.environ.get("PROTECTOGOTCHI_TORCH_REEXECED") == "1":
+        return
+    if module_available("torch"):
+        return
+
+    for executable in candidate_python_executables():
+        if not python_has_module(executable, "torch"):
+            continue
+
+        env = os.environ.copy()
+        env["PROTECTOGOTCHI_TORCH_REEXECED"] = "1"
+        os.execve(
+            executable,
+            [executable, str(Path(__file__).resolve()), *sys.argv[1:]],
+            env,
+        )
+
+
 def ensure_source_tree_importable() -> None:
     src = repo_root() / "src"
     src_text = str(src)
     if src.exists() and src_text not in sys.path:
         sys.path.insert(0, src_text)
+
+
+def suppress_optional_backend_noise() -> None:
+    warnings.filterwarnings("ignore", message="Failed to initialize NumPy.*")
 
 
 def build_argv(argv: list[str] | None = None) -> list[str]:
@@ -98,6 +174,7 @@ def build_argv(argv: list[str] | None = None) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    suppress_optional_backend_noise()
     ensure_source_tree_importable()
     from protectogotchi.cli import main as cli_main
 
@@ -106,4 +183,5 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     reexec_without_virtualenv()
+    reexec_with_torch_python()
     raise SystemExit(main())
