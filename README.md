@@ -43,19 +43,17 @@ http://127.0.0.1:8765
 web UI with safe localhost defaults. You can still pass normal CLI arguments,
 for example `python3 start.py scan` or `python3 start.py web --port 9000`.
 
-## Quick start
+## Quick start without venv
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install ".[dev]"
-protectogotchi --help
-protectogotchi scan
-protectogotchi status
+python3 start.py
+python3 start.py scan
+python3 start.py status
 ```
 
-For live source-tree development you can also run commands with
-`PYTHONPATH=src python -m protectogotchi ...`.
+Protectogotchi is intentionally runnable straight from the source tree. Use
+`python3 start.py ...` for all local commands; it adds `src` automatically and
+does not require package installation or virtualenv activation.
 
 To start the local web UI directly from the source tree:
 
@@ -67,48 +65,48 @@ Useful commands:
 
 ```bash
 # One local scan, update the baseline when the risk is low enough.
-protectogotchi scan
+python3 start.py scan
 
 # Machine-readable output for logs or a future dashboard.
-protectogotchi scan --json
+python3 start.py scan --json
 
 # Export raw telemetry without learning.
-protectogotchi snapshot
+python3 start.py snapshot
 
 # Build a passive topology from interfaces, routes, gateways, subnets, and devices.
-protectogotchi topology
-protectogotchi topology --json
-protectogotchi map
+python3 start.py topology
+python3 start.py topology --json
+python3 start.py map
 
 # Run realtime local web status/API. Binds to localhost by default.
-protectogotchi web --host 127.0.0.1 --port 8765 --scan-interval 3
+python3 start.py web --host 127.0.0.1 --port 8765 --scan-interval 3
 
 # Continuous local daemon mode.
-protectogotchi daemon --interval 10
+python3 start.py daemon --interval 10
 
 # List the defensive arsenal, rules, and local network knowledge.
-protectogotchi tools
-protectogotchi arsenal
-protectogotchi toolbox
-protectogotchi toolbox --target 192.168.1.1
-protectogotchi toolbox --pcap capture.pcap
-protectogotchi ai
-protectogotchi rules
-protectogotchi knowledge
-protectogotchi knowledge arp-spoofing
-protectogotchi enforcement
-protectogotchi enforcement inline-gateway
-protectogotchi easy-protect
-protectogotchi setup-wizard
-protectogotchi simulate arp-spoof
-protectogotchi simulate vlan-lateral-movement
+python3 start.py tools
+python3 start.py arsenal
+python3 start.py toolbox
+python3 start.py toolbox --target 192.168.1.1
+python3 start.py toolbox --pcap capture.pcap
+python3 start.py ai
+python3 start.py rules
+python3 start.py knowledge
+python3 start.py knowledge arp-spoofing
+python3 start.py enforcement
+python3 start.py enforcement inline-gateway
+python3 start.py easy-protect
+python3 start.py setup-wizard
+python3 start.py simulate arp-spoof
+python3 start.py simulate vlan-lateral-movement
 
 # Trust or untrust devices explicitly.
-protectogotchi trust-device --mac 00:11:22:33:44:55 --label laptop
-protectogotchi untrust-device --mac 00:11:22:33:44:55
+python3 start.py trust-device --mac 00:11:22:33:44:55 --label laptop
+python3 start.py untrust-device --mac 00:11:22:33:44:55
 
 # Plan a defensive block without changing the system firewall.
-protectogotchi respond --ip 192.168.1.50 --reason "manual test"
+python3 start.py respond --ip 192.168.1.50 --reason "manual test"
 ```
 
 ## Local AI engine
@@ -118,18 +116,23 @@ Protectogotchi now has a real neural backend interface:
 - `NetML`: PyTorch deep autoencoder for local network-metric anomaly detection.
 - `DQN policy`: PyTorch safety-gated Deep-Q style policy for defensive action
   prioritization.
-- `protectogotchi ai`: shows whether the PyTorch backend is installed, model
+- `python3 start.py ai`: shows whether the PyTorch backend is installed, model
   observations, hidden/latent units, and policy update state.
 
 Install the ML runtime when you want the neural network to execute locally:
 
 ```bash
-python -m pip install ".[ml]"
+python3.12 -m pip install --user --break-system-packages torch
+python3.12 start.py ai
 ```
 
-Without the `ml` extra, Protectogotchi still runs detection, baselines, topology
-mapping, UI, and the capability orchestrator, but it reports the neural backend
-as unavailable instead of pretending a framework model is active.
+Homebrew Python blocks global package writes by default. `--user` keeps the
+package in the user site-packages; `--break-system-packages` is the explicit
+override required by Homebrew's externally-managed Python. Start Protectogotchi
+with the same Python version you used to install Torch. Without Torch,
+Protectogotchi still runs detection, baselines, topology mapping, UI, and the
+capability orchestrator, but it reports the neural backend as unavailable
+instead of pretending a framework model is active.
 
 ## Modular arsenal
 
