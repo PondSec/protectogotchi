@@ -24,6 +24,25 @@ Active firewall enforcement is intentionally guarded behind explicit opt-in
 configuration. Protectogotchi should protect the network, not surprise its
 owner.
 
+## Easiest start after cloning
+
+If you just want the local web app, you do not need to create a virtual
+environment or install the package first:
+
+```bash
+python3 start.py
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765
+```
+
+`start.py` adds the local `src` folder to Python automatically and starts the
+web UI with safe localhost defaults. You can still pass normal CLI arguments,
+for example `python3 start.py scan` or `python3 start.py web --port 9000`.
+
 ## Quick start
 
 ```bash
