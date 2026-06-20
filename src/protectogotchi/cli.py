@@ -209,9 +209,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "status":
         state = StateStore(config.state_dir).load()
-        print(render_face("happy" if state.observations else "learning"))
+        learning_remaining = max(0, config.min_baseline_observations - state.observations)
+        print(render_face("happy" if learning_remaining == 0 else "learning"))
         print(f"level={state.level} xp={state.xp} scans={state.scans}")
         print(f"baseline_observations={state.observations}")
+        print(f"baseline_ready={'yes' if learning_remaining == 0 else 'no'}")
+        print(f"learning_remaining={learning_remaining}")
         print(f"known_devices={len(state.devices)}")
         print(f"state_file={StateStore(config.state_dir).path}")
         return 0
@@ -386,6 +389,9 @@ def _handle_baseline(args: argparse.Namespace, config: ProtectogotchiConfig) -> 
         print(f"level={state.level} xp={state.xp}")
         print(f"known_devices={len(state.devices)}")
         print(f"trusted_devices={len(state.trusted_devices)}")
+        print(f"known_routes={len(state.known_route_keys)}")
+        print(f"known_subnets={len(state.known_subnets)}")
+        print(f"known_interfaces={len(state.known_interfaces)}")
         print(f"gateway_macs={json.dumps(state.gateway_macs, sort_keys=True)}")
         print("feature_stats:")
         for name, stats in sorted(state.feature_stats.items()):

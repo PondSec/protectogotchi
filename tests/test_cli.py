@@ -21,6 +21,14 @@ def test_baseline_show_uses_state_dir(tmp_path, capsys):
     output = capsys.readouterr().out
     assert "observations=0" in output
     assert "known_devices=0" in output
+    assert "known_routes=0" in output
+
+
+def test_status_reports_baseline_readiness(tmp_path, capsys):
+    assert main(["--state-dir", str(tmp_path), "status"]) == 0
+    output = capsys.readouterr().out
+    assert "baseline_ready=no" in output
+    assert "learning_remaining=3" in output
 
 
 def test_rules_command_lists_detection_rules(capsys):
